@@ -1,0 +1,37 @@
+
+
+// Enums 
+export const BUG_SEVERITY = {
+    UNCONFIRMED : "UNCONFIRMED",
+    LOW : "LOW",
+    MEDIUM : "MEDIUM",
+    HIGH : "HIGH",
+    CRITICAL : "CRITICAL"
+}
+
+export const BUG_STATUS = {
+    OPEN : "OPEN",
+    ASSIGNED : "ASSIGNED",
+    REVIEW_REQUESTED : "REVIEW_REQUESTED",
+    AWAITING_VERIFICATION : "AWAITING_VERIFICATION",
+    RESOLVED : "RESOLVED",
+    REOPENED : "REOPENED",
+}
+
+export const BUG_ENVIRONMENT = {
+    PRODUCTION: "PRODUCTION",
+    STAGING: "STAGING",
+    DEVELOPMENT: "DEVELOPMENT",
+}
+
+export const BUG_TYPE = {
+    UI : "UI",
+    FUNCTIONAL : "FUNCTIONAL",
+    BACKEND : "BACKEND",
+    DATABASE : "DATABASE",
+    API : "API",
+    SECURITY : "SECURITY",
+    INFRA : "INFRA",
+    OTHER : "OTHER",
+}
+

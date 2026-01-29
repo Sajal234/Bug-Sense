@@ -1,4 +1,4 @@
-
+import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 
@@ -28,7 +28,7 @@ const userSchema = new Schema(
             type : String,
             required : [true, "Password is required"],
             select : false,
-        },
+        }
     }, 
     {
         timestamps : true,
@@ -53,6 +53,33 @@ userSchema.pre("save", async function(next){
 userSchema.methods.comparePassword = async function(candidatePassword){
     return await bcrypt.compare(candidatePassword, this.passwordHash);
 } 
+
+// generate access token
+userSchema.methods.generateAccessToken = function(){
+    return jwt.sign(
+        {
+            userId : this._id,
+            email : this.email,
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+            expiresIn : process.env.ACCESS_TOKEN_EXPIRY || "15m"
+        }
+    )
+}
+
+// generate refresh token
+userSchema.methods.generateRefreshToken = function(){
+    return jwt.sign(
+        {
+            userId : this._id,
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiresIn : process.env.REFRESH_TOKEN_EXPIRY || "7d"
+        }
+    )
+}
 
 
 

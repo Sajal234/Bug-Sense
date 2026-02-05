@@ -28,6 +28,10 @@ const userSchema = new Schema(
             type : String,
             required : [true, "Password is required"],
             select : false,
+        },
+        refreshToken : {
+            type : String,
+            select : false,
         }
     }, 
     {
@@ -38,7 +42,7 @@ const userSchema = new Schema(
 
 // hash password before saving 
 const SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 10;
-userSchema.pre("save", async function(next){
+userSchema.pre("save", async function(){
 
     // password not modified
     if(!this.isModified("passwordHash"))

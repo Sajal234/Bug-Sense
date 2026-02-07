@@ -37,6 +37,12 @@ const projectSchema = new Schema(
                 }
             }
         ],
+        inviteCode: {
+            type: String,
+            required: true,
+            unique: true,
+            index: true
+        },
         isActive: {
             type: Boolean,
             default: true,

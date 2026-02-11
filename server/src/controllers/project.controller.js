@@ -86,3 +86,24 @@ export const joinProject = asyncHandler( async(req, res) => {
         )
     )    
 })
+
+// get all projects of user
+export const getMyProjects = asyncHandler( async(req, res) => {
+    const userId = req.user._id;
+    const projects = await Project.find({
+        $or: [
+            { lead: userId },
+            { "members.user": userId }
+        ]
+    })
+    .select("-inviteCode")
+    .sort({ createdAt : -1})
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            projects,
+            "Projects fetched successfully"
+        )
+    );
+})

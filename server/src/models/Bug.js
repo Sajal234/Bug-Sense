@@ -106,7 +106,7 @@ const bugSchema = new Schema(
         status : {
             type : String,
             enum : Object.values(BUG_STATUS),
-            default: BUG_STATUS.OPEN,
+            default: BUG_STATUS.PENDING_REVIEW,
             index : true,
         },
         isActive : {

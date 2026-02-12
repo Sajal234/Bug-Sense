@@ -10,6 +10,7 @@ export const BUG_SEVERITY = {
 }
 
 export const BUG_STATUS = {
+    PENDING_REVIEW: "PENDING_REVIEW",
     OPEN : "OPEN",
     ASSIGNED : "ASSIGNED",
     REVIEW_REQUESTED : "REVIEW_REQUESTED",

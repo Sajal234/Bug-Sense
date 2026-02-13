@@ -82,3 +82,91 @@ export const createBug = asyncHandler( async(req, res) => {
         new ApiResponse(bug, "Bug created successfully")
     )
 })
+
+// get all bugs of a project
+export const getProjectBugs = asyncHandler( async(req, res) => {
+
+    const { projectId } = req.params;
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    const {
+        status,
+        severity,
+        page=1,
+        limit=10,
+        assignedTo,
+        createdBy,
+        bugType
+    } = req.query;
+
+
+    if(status && !Object.values(BUG_STATUS).includes(status)){
+        throw new ApiError(400, "Invalid bug status");
+    }
+
+    if(severity && !Object.values(BUG_SEVERITY).includes(severity)){
+        throw new ApiError(400, "Invalid bug severity");    
+    }
+
+    if (bugType && !Object.values(BUG_TYPE).includes(bugType)) {
+        throw new ApiError(400, "Invalid bug type filter");
+    }
+
+
+
+    if(!project.isMember(req.user._id)){
+        throw new ApiError(403, "You are not a member of this project");
+    }
+
+
+    // dynamic query
+    const filter = { 
+        project: projectId,
+        isActive : true
+     };
+
+    if(status)
+        filter.status = status;
+    if(severity)
+        filter.severity = severity;
+    if(assignedTo)
+        filter.assignedTo = assignedTo;
+    if(createdBy)
+        filter.createdBy = createdBy;
+    if(bugType)
+        filter.bugType = bugType;
+
+
+    // Pagination
+    const pageNumber = Math.max(parseInt(page) || 1, 1);
+    const limitNumber = Math.max(Math.min(parseInt(limit) || 10, 50), 1);
+    const skip = (pageNumber - 1) * limitNumber;
+    
+    // fetching all bugs
+    const bugs = await Bug.find(filter)
+        .sort({createdAt : -1})
+        .skip(skip)
+        .limit(limitNumber)
+        .populate("createdBy", "name email")
+        .populate("assignedTo", "name email")
+
+    // total page counts of bugs
+     const total = await Bug.countDocuments(filter);
+
+    return res.status(200).json(
+        new ApiResponse(
+            {
+                bugs,
+                pagination: {
+                    total,
+                    page: pageNumber,
+                    limit: limitNumber,
+                    pages: Math.ceil(total / limitNumber)
+                }
+            },
+            "Project bugs fetched successfully"
+        )
+    );
+
+})

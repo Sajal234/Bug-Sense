@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createProject, getMyProjects, joinProject } from "../controllers/project.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
-import { createBug } from "../controllers/bug.controller.js";
+import { createBug, getProjectBugs } from "../controllers/bug.controller.js";
 import rateLimit from 'express-rate-limit';
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -15,8 +15,10 @@ router.route("/").post(authLimiter, verifyJWT, createProject);
 
 router.route("/join").post(authLimiter, verifyJWT, joinProject);
 
-router.route("/my-projects").get(authLimiter, verifyJWT, getMyProjects);
+router.route("/my-projects").get(verifyJWT, getMyProjects);
 
-router.route("/:projectId/bugs").post(authLimiter, verifyJWT, createBug);
+router.route("/:projectId/bugs")
+.post(authLimiter, verifyJWT, createBug)
+.get(verifyJWT, getProjectBugs);
 
 export default router;

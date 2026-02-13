@@ -4,6 +4,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import userRouter from "./routes/auth.routes.js"
 import projectRouter from "./routes/project.routes.js"
+import mongoSanitize from 'express-mongo-sanitize';
+import xss from 'xss-clean';
 
 
 const app = express();
@@ -13,11 +15,14 @@ app.use(cors({
     credentials: true,
 }));
 
-app.use(express.json({ limit: "16kb" }));
+app.use(express.json({ limit: "100kb" }));
 
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 app.use(cookieParser());
+
+app.use(mongoSanitize()); // Prevent NoSQL injection
+app.use(xss()); // Prevent XSS
 
 
 

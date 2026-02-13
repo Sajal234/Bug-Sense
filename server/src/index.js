@@ -3,7 +3,9 @@ dotenv.config();
 
 import app from "./app.js"
 import connectDB from "./config/database.js";
+import { validateEnv } from "./config/validateEnv.js";
 
+validateEnv();
 
 connectDB()
 .then(()=>{

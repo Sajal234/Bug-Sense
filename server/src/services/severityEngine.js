@@ -2,32 +2,28 @@ import { BUG_SEVERITY } from "../types/index.js";
 
 export const calculateSeverity = ({ title, description, environment }) => {
     const text = `${title} ${description}`.toLowerCase();
-
-    let suggestedSeverity = BUG_SEVERITY.LOW;
     const matchedRules = [];
 
-    // Critical keywords
+    // CRITICAL takes highest priority
     const criticalKeywords = ["crash", "data loss", "payment failed", "security breach"];
     if (criticalKeywords.some(word => text.includes(word))) {
-        suggestedSeverity = BUG_SEVERITY.CRITICAL;
         matchedRules.push("Critical keyword detected");
+        return { suggestedSeverity: BUG_SEVERITY.CRITICAL, matchedRules };
     }
 
     // Production environment boost
-    if (environment === "PRODUCTION" && suggestedSeverity !== BUG_SEVERITY.CRITICAL) {
-        suggestedSeverity = BUG_SEVERITY.HIGH;
+    if (environment === "PRODUCTION") {
         matchedRules.push("Production environment");
+        return { suggestedSeverity: BUG_SEVERITY.HIGH, matchedRules };
     }
 
-    // Minor keywords
+    // Minor keywords (lowest priority)
     const lowKeywords = ["typo", "ui alignment", "color issue", "css"];
     if (lowKeywords.some(word => text.includes(word))) {
-        suggestedSeverity = BUG_SEVERITY.LOW;
         matchedRules.push("Minor UI keyword detected");
+        return { suggestedSeverity: BUG_SEVERITY.LOW, matchedRules };
     }
 
-    return {
-        suggestedSeverity,
-        matchedRules
-    };
+    // Default
+    return { suggestedSeverity: BUG_SEVERITY.MEDIUM, matchedRules };
 };

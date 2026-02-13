@@ -9,8 +9,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // destructuring data that is sent from the client
     const { name, email, password } = req.body;
-    console.log("Name : ", name);
-    console.log(`Email : ${email}`);
+
 
     // validation of each field
     if([name, email, password].some((field) => !field || field?.trim() === "")){

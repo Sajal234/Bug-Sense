@@ -1,11 +1,20 @@
 import { Router } from "express";
 import { createProject, getMyProjects, joinProject } from "../controllers/project.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
-import { createBug, getProjectBugs } from "../controllers/bug.controller.js";
+import { approveBug, createBug, getProjectBugs } from "../controllers/bug.controller.js";
 import rateLimit from 'express-rate-limit';
+
+
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: "Too many attempts, please try again later"
+});
+
+
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 requests per window
+    max: 10, // 10 requests per window
     message: "Too many attempts, please try again later"
 });
 
@@ -18,7 +27,10 @@ router.route("/join").post(authLimiter, verifyJWT, joinProject);
 router.route("/my-projects").get(verifyJWT, getMyProjects);
 
 router.route("/:projectId/bugs")
-.post(authLimiter, verifyJWT, createBug)
+.post(generalLimiter, verifyJWT, createBug)
 .get(verifyJWT, getProjectBugs);
+
+router.route("/:projectId/bugs/:bugId/approve")
+.patch(generalLimiter, verifyJWT, approveBug);
 
 export default router;

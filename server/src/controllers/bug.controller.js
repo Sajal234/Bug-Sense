@@ -5,6 +5,7 @@ import { calculateSeverity } from "../services/severityEngine.js";
 import { Bug } from "../models/Bug.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { BUG_STATUS, BUG_SEVERITY, BUG_ENVIRONMENT, BUG_TYPE } from "../types/index.js";
+import { getBugByIdOrThrow } from "../services/bug.js";
 
 
 export const createBug = asyncHandler( async(req, res) => {
@@ -167,6 +168,58 @@ export const getProjectBugs = asyncHandler( async(req, res) => {
             },
             "Project bugs fetched successfully"
         )
+    );
+
+})
+
+// approve bug
+export const approveBug = asyncHandler( async(req, res) => {
+
+    const { projectId, bugId } = req.params;
+    const { severity } = req.body;
+
+    if (severity && !Object.values(BUG_SEVERITY).includes(severity)) {
+        throw new ApiError(400, "Invalid severity value");
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can approve bugs");
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if(bug.status !== BUG_STATUS.PENDING_REVIEW){
+        throw new ApiError(400, "Bug is not in pending state");
+    }
+
+    const previousState = bug.status;
+    
+    const finalSeverity = severity || bug.suggestedSeverity || BUG_SEVERITY.MEDIUM;
+    
+    if(bug.severity!==finalSeverity){
+        bug.history.push({
+            action : "Severity updated",
+            from : bug.severity,
+            to : finalSeverity,
+            by : req.user._id
+        });
+    }
+    
+    bug.severity = finalSeverity;
+    bug.status = BUG_STATUS.OPEN;
+
+    bug.history.push({
+        action : "Bug approved",
+        from : previousState,
+        to : BUG_STATUS.OPEN,
+        by : req.user._id
+    })
+
+    await bug.save();
+
+    return res.status(200).json(
+        new ApiResponse(bug, "Bug approved successfully")
     );
 
 })

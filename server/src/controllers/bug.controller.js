@@ -223,3 +223,40 @@ export const approveBug = asyncHandler( async(req, res) => {
     );
 
 })
+
+// reject bug
+export const rejectBug = asyncHandler( async(req, res) => {
+    const {projectId, bugId} = req.params;
+    const {reason} = req.body;
+
+    if(!reason || !reason.trim()){
+        throw new ApiError(400, "Rejection reason is required");
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can reject bugs");
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+    if(bug.status!==BUG_STATUS.PENDING_REVIEW){
+        throw new ApiError(400, "Bug is not in pending state");
+    }
+
+    const previousState = bug.status;
+    bug.status = BUG_STATUS.REJECTED;
+
+    bug.history.push({
+        action : "Bug rejected",
+        from : previousState,
+        to : BUG_STATUS.REJECTED,
+        by : req.user._id,
+        meta : reason.trim()
+    })
+
+    await bug.save();
+
+    return res.status(200).json(
+        new ApiResponse(bug, "Bug rejected successfully")
+    )
+})

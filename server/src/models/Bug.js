@@ -29,6 +29,10 @@ const historySchema = new Schema({
         default : Date.now,
     },
 
+    meta : {
+        type : String
+    }
+
 }, { _id: false })
 
 const reviewRequestSchema = new Schema({

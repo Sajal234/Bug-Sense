@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createProject, getMyProjects, joinProject } from "../controllers/project.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
-import { approveBug, createBug, getProjectBugs } from "../controllers/bug.controller.js";
+import { approveBug, createBug, getProjectBugs, rejectBug } from "../controllers/bug.controller.js";
 import rateLimit from 'express-rate-limit';
 
 
@@ -32,5 +32,8 @@ router.route("/:projectId/bugs")
 
 router.route("/:projectId/bugs/:bugId/approve")
 .patch(generalLimiter, verifyJWT, approveBug);
+
+router.route("/:projectId/bugs/:bugId/reject")
+.patch(generalLimiter, verifyJWT, rejectBug);
 
 export default router;

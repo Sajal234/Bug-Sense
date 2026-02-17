@@ -260,3 +260,26 @@ export const rejectBug = asyncHandler( async(req, res) => {
         new ApiResponse(bug, "Bug rejected successfully")
     )
 })
+
+// get bug info
+export const getBugInfo = asyncHandler( async(req, res) => {
+    const { projectId, bugId } = req.params;
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isMember(req.user._id)){
+        throw new ApiError(403, "You are not a member of this project");
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId)
+
+    await bug.populate([
+        { path: "createdBy", select: "name email" },
+        { path: "assignedTo", select: "name email" },
+        { path: "history.by", select: "name email" },
+        { path: "reviewRequests.requestedBy", select: "name email" },
+        { path: "fixes" }
+    ]);
+    return res.status(200).json(
+        new ApiResponse(bug, "Bug details fetched successfully")
+    )
+})

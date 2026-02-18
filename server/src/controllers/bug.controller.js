@@ -345,7 +345,7 @@ export const assignBug = asyncHandler( async(req, res) => {
         from: previousAssignee?.toString() || null,
         to: assignedTo,
         by: req.user._id,
-        meta: assignedTo
+        meta: `Assigned to user ${assignedTo}`
     });
 
     await bug.save();

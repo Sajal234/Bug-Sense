@@ -6,6 +6,7 @@ import { Bug } from "../models/Bug.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { BUG_STATUS, BUG_SEVERITY, BUG_ENVIRONMENT, BUG_TYPE } from "../types/index.js";
 import { getBugByIdOrThrow } from "../services/bug.js";
+import mongoose from "mongoose";
 
 
 export const createBug = asyncHandler( async(req, res) => {
@@ -282,4 +283,73 @@ export const getBugInfo = asyncHandler( async(req, res) => {
     return res.status(200).json(
         new ApiResponse(bug, "Bug details fetched successfully")
     )
+})
+
+// assign bug
+export const assignBug = asyncHandler( async(req, res) => {
+    const {bugId, projectId} = req.params;
+    const project = await getProjectByIdOrThrow(projectId);
+    const {assignedTo} = req.body;
+
+    if(!assignedTo){
+        throw new ApiError(400, "Assignee user id is required");
+    }
+
+    if(!mongoose.Types.ObjectId.isValid(assignedTo)){
+        throw new ApiError(400, "Invalid user id format")
+    }
+
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can assign bugs")
+    }
+    
+    if(!project.isMember(assignedTo)){
+        throw new ApiError(400, "User is not a member of this project");
+    }
+    
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+    const allowedStatuses = [
+        BUG_STATUS.OPEN,
+        BUG_STATUS.REOPENED,
+        BUG_STATUS.ASSIGNED
+    ];
+
+    if (!allowedStatuses.includes(bug.status)) {
+        throw new ApiError(400, "Bug cannot be assigned in its current state");
+    }
+
+    const previousAssignee = bug.assignedTo;
+    const previousStatus = bug.status;
+
+    if (previousAssignee?.toString() === assignedTo) {
+        throw new ApiError(400, "Bug is already assigned to this user");
+    }
+
+    // If status is not already ASSIGNED, update it
+    if (bug.status !== BUG_STATUS.ASSIGNED) {
+        bug.status = BUG_STATUS.ASSIGNED;
+
+        bug.history.push({
+            action: "Status updated",
+            from: previousStatus,
+            to: BUG_STATUS.ASSIGNED,
+            by: req.user._id
+        });
+    }
+
+    // Assignment change
+    bug.assignedTo = assignedTo;
+
+    bug.history.push({
+        action: previousAssignee ? "Bug Reassigned" : "Bug Assigned",
+        from: previousAssignee?.toString() || null,
+        to: assignedTo,
+        by: req.user._id,
+        meta: assignedTo
+    });
+
+    await bug.save();
+    return res.status(200).json(
+        new ApiResponse(bug, "Bug assigned successfully")
+    );
 })

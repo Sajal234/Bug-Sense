@@ -427,3 +427,42 @@ export const submitFix = asyncHandler( async(req, res) => {
         new ApiResponse({bug, fix}, "Fix submitted successfully")
     );
 })
+
+// request reopen
+export const requestReopen = asyncHandler( async(req, res) => {
+
+    const {projectId, bugId} = req.params;
+    const {reason} = req.body;
+
+    if(!reason?.trim()){
+        throw new ApiError(400, "Reopen reason is required");
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+    if(!project.isMember(req.user._id)){
+        throw new ApiError(403, "You are not a member of this project")
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if (bug.status !== BUG_STATUS.RESOLVED) {
+        throw new ApiError(400, "Only resolved bugs can be reopened");
+    }
+
+    const previousState = bug.status;
+    bug.status = BUG_STATUS.PENDING_REVIEW;
+
+    bug.history.push({
+        action : "Reopen requested",
+        from : previousState,
+        to : BUG_STATUS.PENDING_REVIEW,
+        by : req.user._id,
+        meta : reason.trim()
+    })
+
+    await bug.save();
+    return res.status(200)
+    .json(
+        new ApiResponse(bug, "Reopen request submitted for review")
+    )
+})

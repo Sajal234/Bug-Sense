@@ -7,6 +7,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { BUG_STATUS, BUG_SEVERITY, BUG_ENVIRONMENT, BUG_TYPE } from "../types/index.js";
 import { getBugByIdOrThrow } from "../services/bug.js";
 import mongoose from "mongoose";
+import { BugFix } from "../models/BugFix.js";
 
 
 export const createBug = asyncHandler( async(req, res) => {
@@ -351,5 +352,78 @@ export const assignBug = asyncHandler( async(req, res) => {
     await bug.save();
     return res.status(200).json(
         new ApiResponse(bug, "Bug assigned successfully")
+    );
+})
+
+// submit bug Fix
+export const submitFix = asyncHandler( async(req, res) => {
+    const {projectId, bugId} = req.params;
+    const {commitUrl, summary, proof} = req.body;
+    
+    
+    if(!summary?.trim() || !commitUrl?.trim()){
+        throw new ApiError(400, "Summary and commitUrl are required")
+    }
+    
+    const URL_REGEX = /^https?:\/\/.+\..+/;
+    if (!URL_REGEX.test(commitUrl.trim())) {
+        throw new ApiError(400, "commitUrl must be a valid URL (e.g., https://github.com/...)");
+    }
+    
+    const project = await getProjectByIdOrThrow(projectId);
+    
+    if(!project.isMember(req.user._id)){
+        throw new ApiError(403, "You are not a member of this project")
+    }
+    
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+    
+    const allowedStates = [
+        BUG_STATUS.ASSIGNED
+    ]
+    
+    if(!allowedStates.includes(bug.status)){
+        throw new ApiError(400, "Fix cannot be submitted in current bug state")
+    }
+
+    if (!bug.assignedTo || bug.assignedTo.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You are not assigned to this bug");
+    }
+
+    const existingPendingFixes = await BugFix.findOne({
+        bug : bug._id,
+        status : "PENDING"
+    })
+
+    if(existingPendingFixes){
+        throw new ApiError(400, "A fix is already pending")
+    }
+
+    const fix = await BugFix.create({
+        bug : bug._id,
+        submittedBy : req.user._id,
+        commitUrl : commitUrl.trim(),
+        summary : summary.trim(),
+        status : "PENDING",
+        proof 
+    })
+
+    bug.fixes.push(fix._id);
+
+    const previousState = bug.status;
+    bug.status = BUG_STATUS.AWAITING_VERIFICATION;
+
+    bug.history.push({
+        action : "Fix submitted",
+        from : previousState,
+        to : BUG_STATUS.AWAITING_VERIFICATION,
+        by : req.user._id,
+        meta : `Fix ID: ${fix._id}`
+    })
+
+    await bug.save();
+    
+    return res.status(201).json(
+        new ApiResponse({bug, fix}, "Fix submitted successfully")
     );
 })

@@ -20,6 +20,21 @@ export const BUG_STATUS = {
     REJECTED : "REJECTED"
 }
 
+export const BUG_ACTIONS = {
+    BUG_CREATED: "Bug created",
+    REOPEN_REQUESTED: "Reopen requested",
+    REOPEN_APPROVED: "Reopen request approved",
+    FIX_SUBMITTED: "Fix submitted",
+    BUG_ASSIGNED: "Bug assigned",
+    BUG_RESOLVED: "Bug resolved",
+    BUG_REJECTED: "Bug rejected",
+    BUG_REOPENED: "Bug reopened",
+    SEVERITY_UPDATED: "Severity updated",
+    BUG_APPROVED: "Bug approved",
+    BUG_REASSIGNED: "Bug reassigned",
+    STATUS_UPDATED: "Status updated",
+}
+
 export const BUG_ENVIRONMENT = {
     PRODUCTION: "PRODUCTION",
     STAGING: "STAGING",

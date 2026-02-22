@@ -518,3 +518,47 @@ export const approveReopen = asyncHandler( async(req, res) => {
         new ApiResponse(bug, "Reopen request approved successfully")
     );
 })
+
+// reject reopen request
+export const rejectReopen = asyncHandler( async(req, res) => {
+    const {projectId, bugId} = req.params;
+    const {reason} = req.body;
+
+    if(!reason?.trim()){
+        throw new ApiError(400, "rejection reason is required")
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can reject reopen request")
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if(bug.status !== BUG_STATUS.PENDING_REVIEW){
+        throw new ApiError(400, "Bug is not in pending review")
+    }
+
+    const lastHistory = bug.history[bug.history.length - 1];
+    if (!lastHistory || lastHistory.action !== BUG_ACTIONS.REOPEN_REQUESTED) {
+        throw new ApiError(400, "This bug is not awaiting reopen rejection");
+    }
+
+    const previousState = bug.status;
+    bug.status = BUG_STATUS.RESOLVED;
+
+    bug.history.push({
+        action : BUG_ACTIONS.REOPEN_REJECTED,
+        from : previousState,
+        to : BUG_STATUS.RESOLVED,
+        by : req.user._id,
+        meta : reason.trim()
+    })
+
+    await bug.save();
+
+    return res.status(200).json(
+        new ApiResponse(bug, "Reopen request rejected successfully")
+    );
+})

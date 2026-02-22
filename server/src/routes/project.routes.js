@@ -4,7 +4,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import {
     approveBug, approveReopen,
     assignBug, createBug, getBugInfo,
-    getProjectBugs, rejectBug, requestReopen,
+    getProjectBugs, rejectBug, rejectReopen, requestReopen,
     submitFix 
 } from "../controllers/bug.controller.js";
 import rateLimit from 'express-rate-limit';
@@ -55,5 +55,8 @@ router.route("/:projectId/bugs/:bugId/request-reopen")
 
 router.route("/:projectId/bugs/:bugId/approve-reopen")
 .patch(generalLimiter, verifyJWT, approveReopen);
+
+router.route("/:projectId/bugs/:bugId/reject-reopen")
+.patch(generalLimiter, verifyJWT, rejectReopen);
 
 export default router;

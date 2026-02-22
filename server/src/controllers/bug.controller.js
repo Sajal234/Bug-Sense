@@ -251,6 +251,12 @@ export const rejectBug = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Bug is not in pending state");
     }
 
+    const lastHistory = bug.history[bug.history.length - 1];
+
+    if (lastHistory?.action === BUG_ACTIONS.REOPEN_REQUESTED) {
+        throw new ApiError(400, "Use reject-reopen endpoint for reopen requests");
+    }
+
     const previousState = bug.status;
     bug.status = BUG_STATUS.REJECTED;
 

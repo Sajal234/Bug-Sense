@@ -2,6 +2,7 @@ import { Router } from "express";
 import { createProject, getMyProjects, joinProject } from "../controllers/project.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import {
+    acceptBugFix,
     approveBug, approveReopen,
     assignBug, createBug, getBugInfo,
     getProjectBugs, rejectBug, rejectReopen, requestReopen,
@@ -58,5 +59,8 @@ router.route("/:projectId/bugs/:bugId/approve-reopen")
 
 router.route("/:projectId/bugs/:bugId/reject-reopen")
 .patch(generalLimiter, verifyJWT, rejectReopen);
+
+router.route("/:projectId/bugs/:bugId/fixes/:fixId/accept")
+.patch(generalLimiter, verifyJWT, acceptBugFix);
 
 export default router;

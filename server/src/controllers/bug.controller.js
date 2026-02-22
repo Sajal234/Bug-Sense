@@ -4,7 +4,7 @@ import { getProjectByIdOrThrow } from "../services/project.js";
 import { calculateSeverity } from "../services/severityEngine.js";
 import { Bug } from "../models/Bug.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { BUG_STATUS, BUG_SEVERITY, BUG_ENVIRONMENT, BUG_TYPE } from "../types/index.js";
+import { BUG_STATUS, BUG_SEVERITY, BUG_ENVIRONMENT, BUG_TYPE, BUG_ACTIONS } from "../types/index.js";
 import { getBugByIdOrThrow } from "../services/bug.js";
 import mongoose from "mongoose";
 import { BugFix } from "../models/BugFix.js";
@@ -74,7 +74,7 @@ export const createBug = asyncHandler( async(req, res) => {
         stackTrace,
         moduleName,
         history : [{
-            action : "Bug created",
+            action : BUG_ACTIONS.BUG_CREATED,
             from : null,
             to : BUG_STATUS.PENDING_REVIEW,
             by : req.user._id
@@ -195,13 +195,19 @@ export const approveBug = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Bug is not in pending state");
     }
 
+    const lastHistory = bug.history[bug.history.length - 1];
+
+    if (lastHistory?.action === BUG_ACTIONS.REOPEN_REQUESTED) {
+        throw new ApiError(400, "Use approve-reopen endpoint for reopen requests");
+    }
+
     const previousState = bug.status;
     
     const finalSeverity = severity || bug.suggestedSeverity || BUG_SEVERITY.MEDIUM;
     
     if(bug.severity!==finalSeverity){
         bug.history.push({
-            action : "Severity updated",
+            action : BUG_ACTIONS.SEVERITY_UPDATED,
             from : bug.severity,
             to : finalSeverity,
             by : req.user._id
@@ -212,7 +218,7 @@ export const approveBug = asyncHandler( async(req, res) => {
     bug.status = BUG_STATUS.OPEN;
 
     bug.history.push({
-        action : "Bug approved",
+        action : BUG_ACTIONS.BUG_APPROVED,
         from : previousState,
         to : BUG_STATUS.OPEN,
         by : req.user._id
@@ -249,7 +255,7 @@ export const rejectBug = asyncHandler( async(req, res) => {
     bug.status = BUG_STATUS.REJECTED;
 
     bug.history.push({
-        action : "Bug rejected",
+        action : BUG_ACTIONS.BUG_REJECTED,
         from : previousState,
         to : BUG_STATUS.REJECTED,
         by : req.user._id,
@@ -331,7 +337,7 @@ export const assignBug = asyncHandler( async(req, res) => {
         bug.status = BUG_STATUS.ASSIGNED;
 
         bug.history.push({
-            action: "Status updated",
+            action: BUG_ACTIONS.STATUS_UPDATED,
             from: previousStatus,
             to: BUG_STATUS.ASSIGNED,
             by: req.user._id
@@ -342,7 +348,7 @@ export const assignBug = asyncHandler( async(req, res) => {
     bug.assignedTo = assignedTo;
 
     bug.history.push({
-        action: previousAssignee ? "Bug Reassigned" : "Bug Assigned",
+        action: previousAssignee ? BUG_ACTIONS.BUG_REASSIGNED : BUG_ACTIONS.BUG_ASSIGNED,
         from: previousAssignee?.toString() || null,
         to: assignedTo,
         by: req.user._id,
@@ -414,7 +420,7 @@ export const submitFix = asyncHandler( async(req, res) => {
     bug.status = BUG_STATUS.AWAITING_VERIFICATION;
 
     bug.history.push({
-        action : "Fix submitted",
+        action : BUG_ACTIONS.FIX_SUBMITTED,
         from : previousState,
         to : BUG_STATUS.AWAITING_VERIFICATION,
         by : req.user._id,
@@ -453,7 +459,7 @@ export const requestReopen = asyncHandler( async(req, res) => {
     bug.status = BUG_STATUS.PENDING_REVIEW;
 
     bug.history.push({
-        action : "Reopen requested",
+        action : BUG_ACTIONS.REOPEN_REQUESTED,
         from : previousState,
         to : BUG_STATUS.PENDING_REVIEW,
         by : req.user._id,
@@ -465,4 +471,44 @@ export const requestReopen = asyncHandler( async(req, res) => {
     .json(
         new ApiResponse(bug, "Reopen request submitted for review")
     )
+})
+
+// approve reopen request
+export const approveReopen = asyncHandler( async(req, res) => {
+    const {projectId, bugId} = req.params;
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can approve reopen request")
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if(bug.status !== BUG_STATUS.PENDING_REVIEW){
+        throw new ApiError(400, "Bug is not in pending review")
+    }
+
+    const lastHistory = bug.history[bug.history.length - 1];
+
+    if (!lastHistory || lastHistory.action !== BUG_ACTIONS.REOPEN_REQUESTED) {
+        throw new ApiError(400, "This bug is not awaiting reopen approval");
+    }
+
+    const previousState = bug.status;
+    bug.status = BUG_STATUS.REOPENED;
+    bug.assignedTo = null;
+
+    bug.history.push({
+        action : BUG_ACTIONS.REOPEN_APPROVED,
+        from : previousState,
+        to : BUG_STATUS.REOPENED,
+        by : req.user._id,
+        meta : "Reopened request approved"
+    })
+
+    await bug.save();
+
+    return res.status(200).json(
+        new ApiResponse(bug, "Reopen request approved successfully")
+    );
 })

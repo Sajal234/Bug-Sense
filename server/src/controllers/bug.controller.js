@@ -417,29 +417,39 @@ export const submitFix = asyncHandler( async(req, res) => {
         throw new ApiError(400, "A fix is already pending")
     }
 
-    const fix = await BugFix.create({
+    let fix;
+    const session = await mongoose.startSession();
+    try {
+        session.startTransaction();
+
+        [fix] = await BugFix.create([{
         bug : bug._id,
         submittedBy : req.user._id,
         commitUrl : commitUrl.trim(),
         summary : summary.trim(),
         status : "PENDING",
         proof 
-    })
+    }], { session });
 
     bug.fixes.push(fix._id);
-
     const previousState = bug.status;
     bug.status = BUG_STATUS.AWAITING_VERIFICATION;
-
     bug.history.push({
         action : BUG_ACTIONS.FIX_SUBMITTED,
         from : previousState,
         to : BUG_STATUS.AWAITING_VERIFICATION,
         by : req.user._id,
         meta : `Fix ID: ${fix._id}`
-    })
+    });
+    await bug.save({ session });
 
-    await bug.save();
+    await session.commitTransaction();
+    } catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+        session.endSession();
+    }
     
     return res.status(201).json(
         new ApiResponse({bug, fix}, "Fix submitted successfully")
@@ -600,11 +610,10 @@ export const acceptBugFix = asyncHandler( async(req, res) => {
     };
 
     fix.status = "ACCEPTED";
-    await fix.save();
-
+    
     const previousState = bug.status;
     bug.status = BUG_STATUS.RESOLVED;
-
+    
     bug.history.push({
         action : BUG_ACTIONS.BUG_RESOLVED,
         from : previousState,
@@ -612,8 +621,21 @@ export const acceptBugFix = asyncHandler( async(req, res) => {
         by : req.user._id,
         meta : `Fix ID ${fix._id} accepted`
     });
-
-    await bug.save();
+    
+    const session = await mongoose.startSession();
+    try{
+        session.startTransaction();
+        await fix.save({ session });
+        await bug.save({ session });
+        await session.commitTransaction();
+    }
+    catch(err){
+        await session.abortTransaction();
+        throw err;
+    }
+    finally{
+        session.endSession();
+    }
 
     return res.status(200).json(
         new ApiResponse({bug, fix}, "Fix accepted successfully")
@@ -656,7 +678,7 @@ export const rejectBugFix = asyncHandler( async(req, res) => {
 
     fix.status = "REJECTED";
     fix.rejectionReason = reason.trim();
-    await fix.save();
+
 
     const previousState = bug.status;
 
@@ -669,7 +691,21 @@ export const rejectBugFix = asyncHandler( async(req, res) => {
         meta : `Fix ID ${fix._id} rejected`
     })
 
-    await bug.save();
+    const session = await mongoose.startSession();
+    try{
+        session.startTransaction();
+        await fix.save({ session });
+        await bug.save({ session });
+        await session.commitTransaction();
+    }
+    catch(err){
+        await session.abortTransaction();
+        throw err;
+    }
+    finally{
+        session.endSession();
+    }
+
     return res.status(200).json(
         new ApiResponse({bug, fix}, "Fix rejected successfully")
     );

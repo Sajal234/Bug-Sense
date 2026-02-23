@@ -5,7 +5,7 @@ import {
     acceptBugFix,
     approveBug, approveReopen,
     assignBug, createBug, getBugInfo,
-    getProjectBugs, rejectBug, rejectReopen, requestReopen,
+    getProjectBugs, rejectBug, rejectBugFix, rejectReopen, requestReopen,
     submitFix 
 } from "../controllers/bug.controller.js";
 import rateLimit from 'express-rate-limit';
@@ -62,5 +62,8 @@ router.route("/:projectId/bugs/:bugId/reject-reopen")
 
 router.route("/:projectId/bugs/:bugId/fixes/:fixId/accept")
 .patch(generalLimiter, verifyJWT, acceptBugFix);
+
+router.route("/:projectId/bugs/:bugId/fixes/:fixId/reject")
+.patch(generalLimiter, verifyJWT, rejectBugFix);
 
 export default router;

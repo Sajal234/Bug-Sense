@@ -33,7 +33,8 @@ export const BUG_ACTIONS = {
     BUG_APPROVED: "Bug approved",
     BUG_REASSIGNED: "Bug reassigned",
     STATUS_UPDATED: "Status updated",
-    REOPEN_REJECTED: "Reopen rejected"
+    REOPEN_REJECTED: "Reopen rejected",
+    FIX_REJECTED: "Fix rejected"
 }
 
 export const BUG_ENVIRONMENT = {

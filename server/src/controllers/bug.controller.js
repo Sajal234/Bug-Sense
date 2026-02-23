@@ -613,3 +613,58 @@ export const acceptBugFix = asyncHandler( async(req, res) => {
         new ApiResponse({bug, fix}, "Fix accepted successfully")
     );
 })
+
+// reject bugFix
+export const rejectBugFix = asyncHandler( async(req, res) => {
+    const { projectId, bugId, fixId } = req.params;
+    const {reason} = req.body;
+
+    if(!reason?.trim()){
+        throw new ApiError(400, "Rejection reason is required");
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can reject bug fixes")
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if(bug.status !== BUG_STATUS.AWAITING_VERIFICATION){
+        throw new ApiError(400, "Bug is not awaiting verification");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(fixId)) {
+        throw new ApiError(400, "Invalid fix id format");
+    }
+
+    const fix = await BugFix.findById(fixId);
+
+    if (!fix || fix.bug.toString() !== bug._id.toString()) {
+        throw new ApiError(404, "Fix not found for this bug");
+    }
+
+    if (fix.status !== "PENDING") {
+        throw new ApiError(400, "Fix is not in pending state");
+    }
+
+    fix.status = "REJECTED";
+    fix.rejectionReason = reason.trim();
+    await fix.save();
+
+    const previousState = bug.status;
+
+    bug.status = BUG_STATUS.ASSIGNED;
+    bug.history.push({
+        action : BUG_ACTIONS.FIX_REJECTED,
+        from : previousState,
+        to : BUG_STATUS.ASSIGNED,
+        by : req.user._id,
+        meta : `Fix ID ${fix._id} rejected`
+    })
+
+    await bug.save();
+    return res.status(200).json(
+        new ApiResponse({bug, fix}, "Fix rejected successfully")
+    );
+})

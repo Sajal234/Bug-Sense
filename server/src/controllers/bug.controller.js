@@ -133,10 +133,16 @@ export const getProjectBugs = asyncHandler( async(req, res) => {
         filter.status = status;
     if(severity)
         filter.severity = severity;
-    if(assignedTo)
+    if (assignedTo) {
+        if (!mongoose.Types.ObjectId.isValid(assignedTo))
+            throw new ApiError(400, "Invalid assignedTo user ID");
         filter.assignedTo = assignedTo;
-    if(createdBy)
+    }
+    if (createdBy) {
+        if (!mongoose.Types.ObjectId.isValid(createdBy))
+            throw new ApiError(400, "Invalid createdBy user ID");
         filter.createdBy = createdBy;
+    }
     if(bugType)
         filter.bugType = bugType;
 

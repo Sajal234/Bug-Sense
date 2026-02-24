@@ -1,5 +1,6 @@
 
 import mongoose from "mongoose";
+import { PROJECT_ROLES } from "../types/index.js";
 const { Schema } = mongoose;
 
 const projectSchema = new Schema(
@@ -32,7 +33,7 @@ const projectSchema = new Schema(
                 },
                 role : {
                     type : String,
-                    enum : ["FULLSTACK", "FRONTEND", "BACKEND", "QA", "DESIGNER", "OTHER"],
+                    enum : PROJECT_ROLES,
                     default : "FULLSTACK",
                 }
             }

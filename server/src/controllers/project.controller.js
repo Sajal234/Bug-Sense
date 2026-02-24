@@ -1,8 +1,12 @@
+import mongoose from "mongoose";
 import { Project } from "../models/Project.js";
+import { User } from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import crypto from "crypto";
+import { getProjectByIdOrThrow } from "../services/project.js";
+import { PROJECT_ROLES } from "../types/index.js";
 
 
 // creating new project
@@ -54,7 +58,10 @@ export const joinProject = asyncHandler( async(req, res) => {
     }
 
     const normalizedInviteCode = inviteCode.trim().toUpperCase();
-    const project = await Project.findOne({inviteCode: normalizedInviteCode});
+    const project = await Project.findOne({
+        inviteCode: normalizedInviteCode,
+        isActive: true
+    });
 
     if(!project){
         throw new ApiError(404, "Project not found");
@@ -64,10 +71,9 @@ export const joinProject = asyncHandler( async(req, res) => {
         throw new ApiError(409, "You are already a member of this project");
     }
 
-    const allowedRoles = ["FULLSTACK", "FRONTEND", "BACKEND", "QA", "DESIGNER", "OTHER"];
 
     const memberRole = role || "FULLSTACK";
-    if(!allowedRoles.includes(memberRole)){
+    if(!PROJECT_ROLES.includes(memberRole)){
         throw new ApiError(400, "Invalid role selected");
     }
 
@@ -104,6 +110,53 @@ export const getMyProjects = asyncHandler( async(req, res) => {
         new ApiResponse(
             projects,
             "Projects fetched successfully"
+        )
+    );
+})
+
+// add member to project
+export const addMember = asyncHandler( async(req, res) => {
+    const { projectId } = req.params;
+    const { role, userId } = req.body;
+
+    if(!userId){
+        throw new ApiError(400, "User ID is required");
+    }
+    const project = await getProjectByIdOrThrow(projectId);
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can add members")
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        throw new ApiError(400, "Invalid user ID");
+    }
+
+    if (project.isMember(userId)) {
+        throw new ApiError(409, "User is already a member");
+    }
+
+    const user = await User.findById(userId);
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    const memberRole = role || "FULLSTACK";
+    if(!PROJECT_ROLES.includes(memberRole)){
+        throw new ApiError(400, "Invalid role selected");
+    }
+
+    project.members.push({
+        user : userId,
+        role : memberRole
+    })
+
+    await project.save();
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            project,
+            "Member added successfully"
         )
     );
 })

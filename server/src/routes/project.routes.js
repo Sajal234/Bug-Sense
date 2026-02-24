@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createProject, getMyProjects, joinProject } from "../controllers/project.controller.js";
+import { addMember, createProject, getMyProjects, joinProject } from "../controllers/project.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import {
     acceptBugFix,
@@ -31,6 +31,8 @@ router.route("/").post(authLimiter, verifyJWT, createProject);
 router.route("/join").post(authLimiter, verifyJWT, joinProject);
 
 router.route("/my-projects").get(verifyJWT, getMyProjects);
+
+router.route("/:projectId/add-member").patch(verifyJWT, addMember);
 
 router.route("/:projectId/bugs")
 .post(generalLimiter, verifyJWT, createBug)

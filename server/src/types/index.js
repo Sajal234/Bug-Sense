@@ -54,3 +54,13 @@ export const BUG_TYPE = {
     OTHER : "OTHER",
 }
 
+export const PROJECT_ROLES = [
+  "FULLSTACK",
+  "FRONTEND",
+  "BACKEND",
+  "QA",
+  "DESIGNER",
+  "OTHER"
+];
+
+

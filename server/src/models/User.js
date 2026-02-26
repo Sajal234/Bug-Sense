@@ -48,11 +48,6 @@ userSchema.pre("save", async function(){
     if(!this.isModified("passwordHash"))
         return ;
 
-    // passwordHash may temporarily hold a plain password before save.
-    // This guard prevents re-hashing already hashed bcrypt passwords.
-    if (this.passwordHash.startsWith("$2")) 
-        return ;
-    
 
     this.passwordHash = await bcrypt.hash(this.passwordHash, SALT_ROUNDS);
 });

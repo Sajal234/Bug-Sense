@@ -10,6 +10,12 @@ const bugFixSchema = new Schema(
             required : [true, "Bug reference is required"],
             index : true
         },
+        project: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Project",
+            required: true,
+            index: true,
+        },
         submittedBy : {
             type : mongoose.Schema.Types.ObjectId,
             ref : "User",

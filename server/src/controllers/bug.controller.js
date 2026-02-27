@@ -424,6 +424,7 @@ export const submitFix = asyncHandler( async(req, res) => {
 
         [fix] = await BugFix.create([{
         bug : bug._id,
+        project : projectId,
         submittedBy : req.user._id,
         commitUrl : commitUrl.trim(),
         summary : summary.trim(),

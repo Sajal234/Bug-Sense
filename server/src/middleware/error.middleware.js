@@ -2,27 +2,38 @@ import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 
 const errorHandler = (err, req, res, next) => {
-    let statusCode = err.statusCode || 500;
-    let message = err.message || "Internal Server Error";
-    let errors = err.errors || [];
+    let error = err;
 
+    // Normalization: Ensure all errors follow the ApiError structure
+    if (!(error instanceof ApiError)) {
+        const statusCode = error.statusCode || (error instanceof mongoose.Error ? 400 : 500);
+        const message = error.message || "Something went wrong";
+        error = new ApiError(statusCode, message, error?.errors || [], err.stack);
+    }
+
+    let { statusCode, message, errors } = error;
+    
+    // Invalid ObjectId
     if (err instanceof mongoose.Error.CastError) {
         statusCode = 400;
         message = `Invalid ${err.path}: ${err.value}`;
     }
 
+    // Duplicate key
     if (err.code === 11000) {
         statusCode = 409;
         const field = Object.keys(err.keyValue)[0];
         message = `${field} already exists`;
     }
 
+    // Validation error
     if (err instanceof mongoose.Error.ValidationError) {
         statusCode = 400;
         message = "Validation failed";
         errors = Object.values(err.errors).map((e) => e.message);
     }
 
+    // JWT errors
     if (err.name === "JsonWebTokenError") {
         statusCode = 401;
         message = "Invalid token";
@@ -40,7 +51,7 @@ const errorHandler = (err, req, res, next) => {
         statusCode,
         message,
         errors,
-        ...(isDev && { stack: err.stack }), 
+        ...(isDev && { stack: error.stack }), 
     });
 };
 

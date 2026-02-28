@@ -91,6 +91,12 @@ export const getProjectBugs = asyncHandler( async(req, res) => {
 
     const { projectId } = req.params;
 
+    const {isActive} = req.query;
+
+    if (isActive !== undefined && !["true", "false"].includes(isActive)) {
+        throw new ApiError(400, "Invalid isActive value");
+    }
+    
     const project = await getProjectByIdOrThrow(projectId);
 
     const {
@@ -126,8 +132,13 @@ export const getProjectBugs = asyncHandler( async(req, res) => {
     // dynamic query
     const filter = { 
         project: projectId,
-        isActive : true
-     };
+    };
+
+    if (isActive !== undefined) {
+        filter.isActive = isActive === "true";
+    } else {
+        filter.isActive = true;
+    }
 
     if(status)
         filter.status = status;

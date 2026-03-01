@@ -6,6 +6,7 @@ import {
     approveBug, approveReopen,
     assignBug, createBug, getBugInfo,
     getProjectBugs, rejectBug, rejectBugFix, rejectReopen, requestReopen,
+    requestSeverityReview,
     submitFix 
 } from "../controllers/bug.controller.js";
 import rateLimit from 'express-rate-limit';
@@ -70,5 +71,9 @@ router.route("/:projectId/bugs/:bugId/fixes/:fixId/reject")
 
 router.route("/:projectId/remove-member")
 .patch(generalLimiter, verifyJWT, removeMember);
+
+router.route("/:projectId/bugs/:bugId/severity-review")
+.patch(generalLimiter, verifyJWT, requestSeverityReview);
+
 
 export default router;

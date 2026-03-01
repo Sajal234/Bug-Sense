@@ -722,3 +722,89 @@ export const rejectBugFix = asyncHandler( async(req, res) => {
         new ApiResponse({bug, fix}, "Fix rejected successfully")
     );
 })
+
+// request Severity Review
+export const requestSeverityReview = asyncHandler( async(req, res) => {
+    const {projectId, bugId} = req.params;
+    const {reason, proposedSeverity} = req.body;
+
+    if(!reason?.trim()){
+        throw new ApiError(400, "Review reason is required")
+    }
+
+    if(proposedSeverity && !Object.values(BUG_SEVERITY).includes(proposedSeverity)){
+        throw new ApiError(400, "Invalid proposed severity")
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if (!project.isMember(req.user._id)) {
+        throw new ApiError(403, "You are not a member of this project");
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if (proposedSeverity && proposedSeverity === bug.severity) {
+        throw new ApiError(400, "Proposed severity is same as current severity");
+    }
+
+    if (bug.severity === BUG_SEVERITY.UNCONFIRMED) {
+        throw new ApiError(400, "Cannot review unconfirmed severity");
+    }
+
+    const allowedStates = [
+        BUG_STATUS.OPEN,
+        BUG_STATUS.ASSIGNED,
+        BUG_STATUS.REOPENED
+    ];
+
+    if (!allowedStates.includes(bug.status)) {
+        throw new ApiError(400, "Severity review not allowed in current state");
+    }
+
+    const alreadyPending = bug.reviewRequests.some(
+        r => r.status === "PENDING"
+    );
+
+    if(alreadyPending){
+        throw new ApiError(400, "A severity review is already pending")
+    }
+
+    const previousState = bug.status;
+
+    const session = await mongoose.startSession();
+    try {
+        session.startTransaction();
+
+        bug.reviewRequests.push({
+            requestedBy : req.user._id,
+            reason : reason.trim(),
+            proposedSeverity : proposedSeverity || null, 
+            status : "PENDING"
+        });
+
+        bug.status = BUG_STATUS.REVIEW_REQUESTED;
+
+        bug.history.push({
+            action : BUG_ACTIONS.SEVERITY_REVIEW_REQUESTED,
+            from : previousState,
+            to : BUG_STATUS.REVIEW_REQUESTED,
+            by : req.user._id,
+            meta : proposedSeverity
+                ? `Proposed severity: ${proposedSeverity}`
+                : "No severity suggested"
+        });
+
+        await bug.save({ session });
+        await session.commitTransaction();
+    } catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+        session.endSession();
+    }
+
+    return res.status(200).json(
+        new ApiResponse(bug, "Severity review requested successfully")
+    );
+})

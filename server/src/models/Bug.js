@@ -50,6 +50,11 @@ const reviewRequestSchema = new Schema({
         enum: ["PENDING", "APPROVED", "REJECTED", "CANCELLED"],
         default: "PENDING"
     },
+    proposedSeverity: {
+        type: String,
+        enum: Object.values(BUG_SEVERITY),
+        default: null
+    },
     createdAt : {
         type : Date,
         default : Date.now,

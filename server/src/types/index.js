@@ -34,7 +34,10 @@ export const BUG_ACTIONS = {
     BUG_REASSIGNED: "Bug reassigned",
     STATUS_UPDATED: "Status updated",
     REOPEN_REJECTED: "Reopen rejected",
-    FIX_REJECTED: "Fix rejected"
+    FIX_REJECTED: "Fix rejected",
+    SEVERITY_REVIEW_REQUESTED: "Severity review requested",
+    SEVERITY_REVIEW_APPROVED: "Severity review approved",
+    SEVERITY_REVIEW_REJECTED: "Severity review rejected",
 }
 
 export const BUG_ENVIRONMENT = {

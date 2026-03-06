@@ -780,7 +780,8 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
             requestedBy : req.user._id,
             reason : reason.trim(),
             proposedSeverity : proposedSeverity || null, 
-            status : "PENDING"
+            status : "PENDING",
+            previousStatus : previousState,
         });
 
         bug.status = BUG_STATUS.REVIEW_REQUESTED;
@@ -807,4 +808,88 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
     return res.status(200).json(
         new ApiResponse(bug, "Severity review requested successfully")
     );
+})
+
+// accept severity request
+export const approveSeverityReview = asyncHandler( async(req, res) => {
+    const {projectId, bugId} = req.params;
+    const {newSeverity} = req.body;
+
+    if(!newSeverity){
+        throw new ApiError(400, "New severity is required")
+    }
+
+    if (!Object.values(BUG_SEVERITY).includes(newSeverity)) {
+        throw new ApiError(400, "Invalid severity value");
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can approve severity review")
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if (bug.status !== BUG_STATUS.REVIEW_REQUESTED) {
+        throw new ApiError(400, "Bug is not under severity review");
+    }
+
+    const pendingReview = bug.reviewRequests.find(
+        r => r.status === "PENDING"
+    );
+
+    if (!pendingReview) {
+        throw new ApiError(400, "No pending severity review found");
+    }
+
+    if (newSeverity === bug.severity) {
+        throw new ApiError(400, "New severity must differ from current severity");
+    }
+
+    const previousSeverity = bug.severity;
+    const restoreStatus = pendingReview.previousStatus;
+
+    const session = await mongoose.startSession();
+    try{
+        session.startTransaction();
+
+        bug.severity = newSeverity;
+
+        bug.history.push({
+            action: BUG_ACTIONS.SEVERITY_UPDATED,
+            from: previousSeverity,
+            to: newSeverity,
+            by: req.user._id
+        });
+
+        pendingReview.status = "APPROVED";
+        if (restoreStatus === BUG_STATUS.ASSIGNED && !bug.assignedTo) {
+            bug.status = BUG_STATUS.OPEN;
+        } else {
+            bug.status = restoreStatus;
+        }
+
+        bug.history.push({
+            action: BUG_ACTIONS.SEVERITY_REVIEW_APPROVED,
+            from: BUG_STATUS.REVIEW_REQUESTED,
+            to: restoreStatus,
+            by: req.user._id,
+            meta: `Severity changed from ${previousSeverity} to ${newSeverity}`
+        });
+
+        await bug.save({ session });
+
+        await session.commitTransaction();
+    }
+    catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+        session.endSession();
+    }
+
+    return res.status(200).json(
+        new ApiResponse(bug, "Severity review approved successfully")
+    )
 })

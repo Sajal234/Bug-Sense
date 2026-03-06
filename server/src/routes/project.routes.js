@@ -4,6 +4,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import {
     acceptBugFix,
     approveBug, approveReopen,
+    approveSeverityReview,
     assignBug, createBug, getBugInfo,
     getProjectBugs, rejectBug, rejectBugFix, rejectReopen, requestReopen,
     requestSeverityReview,
@@ -74,6 +75,9 @@ router.route("/:projectId/remove-member")
 
 router.route("/:projectId/bugs/:bugId/severity-review")
 .patch(generalLimiter, verifyJWT, requestSeverityReview);
+
+router.route("/:projectId/bugs/:bugId/severity-review/approve")
+.patch(generalLimiter, verifyJWT, approveSeverityReview);
 
 
 export default router;

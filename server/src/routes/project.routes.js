@@ -6,7 +6,7 @@ import {
     approveBug, approveReopen,
     approveSeverityReview,
     assignBug, createBug, getBugInfo,
-    getProjectBugs, rejectBug, rejectBugFix, rejectReopen, requestReopen,
+    getProjectBugs, rejectBug, rejectBugFix, rejectReopen, rejectSeverityReview, requestReopen,
     requestSeverityReview,
     submitFix 
 } from "../controllers/bug.controller.js";
@@ -78,6 +78,9 @@ router.route("/:projectId/bugs/:bugId/severity-review")
 
 router.route("/:projectId/bugs/:bugId/severity-review/approve")
 .patch(generalLimiter, verifyJWT, approveSeverityReview);
+
+router.route("/:projectId/bugs/:bugId/severity-review/reject")
+.patch(generalLimiter, verifyJWT, rejectSeverityReview);
 
 
 export default router;

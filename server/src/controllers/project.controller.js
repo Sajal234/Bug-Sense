@@ -271,26 +271,40 @@ export const removeMember = asyncHandler(async (req, res) => {
 
         for (const bug of reviewRequestBugs) {
 
-            // cancel review requests in array
-            bug.reviewRequests = bug.reviewRequests.map(req => {
+            let restoreStatus = null;
+
+            bug.reviewRequests = bug.reviewRequests.map(r => {
                 if (
-                    req.requestedBy.toString() === userId &&
-                    req.status === "PENDING"
+                    r.requestedBy.toString() === userId &&
+                    r.status === "PENDING"
                 ) {
-                    req.status = "CANCELLED";
+                    r.status = "CANCELLED";
+                    restoreStatus = r.previousStatus;
                 }
-                return req;
+                return r;
             });
 
-            // add history
-            bug.history.push({
-                action: "Review request cancelled",
-                from: null,
-                to: null,
-                by: req.user._id,
-                meta: "Requester removed from project"
-            });
+            if (bug.status === BUG_STATUS.REVIEW_REQUESTED && restoreStatus) {
 
+                let finalStatus;
+
+                if (restoreStatus === BUG_STATUS.ASSIGNED && !bug.assignedTo) {
+                    finalStatus = BUG_STATUS.OPEN;
+                } else {
+                    finalStatus = restoreStatus;
+                }
+
+                const prev = bug.status;
+                bug.status = finalStatus;
+
+                bug.history.push({
+                    action: BUG_ACTIONS.STATUS_UPDATED,
+                    from: prev,
+                    to: finalStatus,
+                    by: req.user._id,
+                    meta: "Severity review cancelled due to member removal"
+                });
+            }
             await bug.save({ session });
         }
 
@@ -308,6 +322,13 @@ export const removeMember = asyncHandler(async (req, res) => {
                     rejectionReason: "Developer removed from project"
                 }
             },
+            { session }
+        );
+
+        // Handling resolved bugs
+        await Bug.updateMany(
+            { project: projectId, assignedTo: userId, status: BUG_STATUS.RESOLVED },
+            { $set: { assignedTo: null } },
             { session }
         );
 

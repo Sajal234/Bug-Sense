@@ -59,6 +59,11 @@ const reviewRequestSchema = new Schema({
         type : Date,
         default : Date.now,
     },
+    previousStatus : {
+        type : String,
+        enum: Object.values(BUG_STATUS),
+        required: true
+    }
 }, { _id: false })
 
 

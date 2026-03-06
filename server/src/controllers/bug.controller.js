@@ -810,7 +810,7 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
     );
 })
 
-// accept severity request
+// accept severity review
 export const approveSeverityReview = asyncHandler( async(req, res) => {
     const {projectId, bugId} = req.params;
     const {newSeverity} = req.body;
@@ -850,6 +850,8 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
     const previousSeverity = bug.severity;
     const restoreStatus = pendingReview.previousStatus;
 
+    let finalStatus;
+
     const session = await mongoose.startSession();
     try{
         session.startTransaction();
@@ -865,15 +867,17 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
 
         pendingReview.status = "APPROVED";
         if (restoreStatus === BUG_STATUS.ASSIGNED && !bug.assignedTo) {
-            bug.status = BUG_STATUS.OPEN;
+            finalStatus = BUG_STATUS.OPEN;
         } else {
-            bug.status = restoreStatus;
+            finalStatus = restoreStatus;
         }
+
+        bug.status = finalStatus;
 
         bug.history.push({
             action: BUG_ACTIONS.SEVERITY_REVIEW_APPROVED,
             from: BUG_STATUS.REVIEW_REQUESTED,
-            to: restoreStatus,
+            to: finalStatus,
             by: req.user._id,
             meta: `Severity changed from ${previousSeverity} to ${newSeverity}`
         });
@@ -892,4 +896,76 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
     return res.status(200).json(
         new ApiResponse(bug, "Severity review approved successfully")
     )
+})
+
+// reject severity review
+export const rejectSeverityReview = asyncHandler( async(req, res) => {
+    const {projectId, bugId} = req.params;
+
+    const {reason} = req.body;
+
+    if(!reason?.trim()){
+        throw new ApiError(400, "Rejection reason is required")
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if (!project.isLead(req.user._id)) {
+        throw new ApiError(403, "Only project lead can reject severity review");
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if (bug.status !== BUG_STATUS.REVIEW_REQUESTED) {
+        throw new ApiError(400, "Bug is not under severity review");
+    }
+
+    const pendingReview = bug.reviewRequests.find(
+        r => r.status === "PENDING"
+    );
+
+    if (!pendingReview) {
+        throw new ApiError(400, "No pending severity review found");
+    }
+    const restoreStatus = pendingReview.previousStatus;
+
+    let finalStatus;
+
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        pendingReview.status = "REJECTED";
+
+        if (restoreStatus === BUG_STATUS.ASSIGNED && !bug.assignedTo) {
+            finalStatus = BUG_STATUS.OPEN;
+        } else {
+            finalStatus = restoreStatus;
+        }
+
+        bug.status = finalStatus;
+
+        bug.history.push({
+            action: BUG_ACTIONS.SEVERITY_REVIEW_REJECTED,
+            from: BUG_STATUS.REVIEW_REQUESTED,
+            to: finalStatus,
+            by: req.user._id,
+            meta: reason.trim()
+        });
+
+        await bug.save({ session });
+
+        await session.commitTransaction();
+
+    } catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+        session.endSession();
+    }
+
+    return res.status(200).json(
+        new ApiResponse(bug, "Severity review rejected successfully")
+    );
 })

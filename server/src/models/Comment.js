@@ -11,6 +11,12 @@ const commentSchema = new Schema(
             required : [true, "Bug reference is required"],
             index : true
         },
+        project : {
+            type : mongoose.Schema.Types.ObjectId,
+            ref : "Project",
+            required : [true, "Project reference is required"],
+            index : true
+        },
         createdBy : {
             type : mongoose.Schema.Types.ObjectId,
             ref : "User",
@@ -36,6 +42,6 @@ const commentSchema = new Schema(
 
 );
 
-commentSchema.index({ bug: 1, createdAt: 1 });
+commentSchema.index({ project:1, bug:1, createdAt:1 })
 
 export const Comment = mongoose.model("Comment", commentSchema);

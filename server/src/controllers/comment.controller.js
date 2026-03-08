@@ -4,6 +4,7 @@ import { getProjectByIdOrThrow } from "../services/project.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { getBugByIdOrThrow } from "../services/bug.js";
 import { Comment } from "../models/Comment.js";
+import mongoose from "mongoose";
 
 
 // add comment 
@@ -86,4 +87,52 @@ export const getBugComments = asyncHandler( async(req, res) => {
             "Comments fetched successfully"
         )
     );
+})
+
+// edit comment
+export const editComment = asyncHandler( async(req, res) => {
+    const { commentId, projectId, bugId } = req.params;
+    const { text } = req.body;
+
+    if(!text?.trim()){
+        throw new ApiError(400, "Updated comment text is required")
+    }
+
+    if(!mongoose.Types.ObjectId.isValid(commentId)){
+        throw new ApiError(400, "Invalid comment ID")
+    }
+    const comment = await Comment.findById(commentId);
+
+    if(!comment || comment.isDeleted){
+        throw new ApiError(404, "Comment not found")
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(comment.project.toString() !== project._id.toString()){
+        throw new ApiError(400, "Comment does not belong to this project");
+    }
+
+    if(!project.isMember(req.user._id)){
+        throw new ApiError(403, "You are not a member of this project")
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if (comment.bug.toString() !== bug._id.toString()) {
+        throw new ApiError(400, "Comment does not belong to this bug");
+    }
+
+    if(comment.createdBy.toString() !== req.user._id.toString()){
+        throw new ApiError(403, "You can only edit your own comment")
+    }
+
+    comment.text = text.trim();
+    await comment.save();
+
+    await comment.populate("createdBy", "name email");
+
+    return res.status(200).json(
+        new ApiResponse(comment, "Comment updated successfully")
+    )
 })

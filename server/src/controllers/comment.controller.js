@@ -136,3 +136,51 @@ export const editComment = asyncHandler( async(req, res) => {
         new ApiResponse(comment, "Comment updated successfully")
     )
 })
+
+// delete comment
+export const deleteComment = asyncHandler( async(req, res) => {
+    const { projectId, bugId, commentId } = req.params;
+
+    if(!mongoose.Types.ObjectId.isValid(commentId)){
+        throw new ApiError(400, "Invalid comment ID")
+    }
+
+    const comment = await Comment.findById(commentId);
+
+    if(!comment || comment.isDeleted){
+        throw new ApiError(404, "Comment not found");
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(comment.project.toString() !== project._id.toString()){
+        throw new ApiError(400, "Comment does not belong to this project");
+    }
+
+    if(!project.isMember(req.user._id)){
+        throw new ApiError(403, "You are not a member of this project")
+    }
+
+    const bug = await getBugByIdOrThrow(bugId, projectId);
+
+    if (comment.bug.toString() !== bug._id.toString()) {
+        throw new ApiError(400, "Comment does not belong to this bug");
+    }
+
+    const isAuthor = comment.createdBy.toString() === req.user._id.toString();
+    const isLead = project.isLead(req.user._id);
+
+    if(!isAuthor && !isLead){
+        throw new ApiError(403, "Not authorized to delete this comment");
+    }
+    
+    comment.isDeleted = true;
+    comment.text = "[comment deleted]";
+
+    await comment.populate("createdBy", "name email");
+    await comment.save();
+
+    return res.status(200).json(
+        new ApiResponse(comment, "Comment deleted successfully")
+    )
+})

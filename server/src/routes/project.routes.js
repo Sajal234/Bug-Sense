@@ -11,7 +11,7 @@ import {
     submitFix 
 } from "../controllers/bug.controller.js";
 import rateLimit from 'express-rate-limit';
-import { addComment, editComment, getBugComments } from "../controllers/comment.controller.js";
+import { addComment, deleteComment, editComment, getBugComments } from "../controllers/comment.controller.js";
 
 
 const generalLimiter = rateLimit({
@@ -89,6 +89,7 @@ router.route("/:projectId/bugs/:bugId/comments")
 
 router.route("/:projectId/bugs/:bugId/comments/:commentId")
 .patch(generalLimiter, verifyJWT, editComment)
+.delete(generalLimiter, verifyJWT, deleteComment)
 
 
 export default router;

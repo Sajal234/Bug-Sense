@@ -351,3 +351,28 @@ export const removeMember = asyncHandler(async (req, res) => {
         new ApiResponse(project, "Member removed successfully")
     );
 });
+
+// get project members
+export const getProjectMembers = asyncHandler( async(req, res) => {
+    const { projectId } = req.params;
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isMember(req.user._id)){
+        throw new ApiError(403, "You are not a member of this project")
+    }
+
+    await project.populate([
+        {path : "lead", select : "name email"},
+        {path : "members.user", select : "name email"}
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(
+            {
+                lead : project.lead,
+                members : project.members
+            }
+            , "Project members fetched successfully")
+    );
+})

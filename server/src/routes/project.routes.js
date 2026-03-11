@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addMember, createProject, getMyProjects, getProjectMembers, joinProject, removeMember } from "../controllers/project.controller.js";
+import { addMember, createProject, getMyProjects, getProjectMembers, joinProject, removeMember, transferProjectLead } from "../controllers/project.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import {
     acceptBugFix,
@@ -93,6 +93,9 @@ router.route("/:projectId/bugs/:bugId/comments/:commentId")
 
 router.route("/:projectId/members")
 .get(generalLimiter, verifyJWT, getProjectMembers)
+
+router.route("/:projectId/transfer-lead")
+.patch(generalLimiter, verifyJWT, transferProjectLead)
 
 
 export default router;

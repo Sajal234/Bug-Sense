@@ -376,3 +376,34 @@ export const getProjectMembers = asyncHandler( async(req, res) => {
             , "Project members fetched successfully")
     );
 })
+
+// transfer project lead
+export const transferProjectLead = asyncHandler( async(req, res) => {
+    const { projectId } = req.params;
+    const { newLeadId } = req.body;
+
+    if(!mongoose.Types.ObjectId.isValid(newLeadId)){
+        throw new ApiError(400, "Invalid new lead ID")
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can transfer leadership")
+    }
+
+    if(!project.isMember(newLeadId)){
+        throw new ApiError(403, "New lead is not a member of this project")
+    }
+
+    if(project.lead.toString() === newLeadId.toString()){
+        throw new ApiError(400, "User is already the project lead");
+    }
+
+    project.lead = newLeadId;
+    await project.save();
+
+    return res.status(200).json(
+        new ApiResponse(project, "Project leadership transferred successfully")
+    );
+})

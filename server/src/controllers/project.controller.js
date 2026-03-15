@@ -595,3 +595,67 @@ export const leaveProject = asyncHandler(async (req, res) => {
         new ApiResponse(null, "You left the project successfully")
     );
 });
+
+// project stats
+export const getProjectStats = asyncHandler(async (req, res) => {
+
+    const { projectId } = req.params;
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if (!project.isMember(req.user._id)) {
+        throw new ApiError(403, "You are not a member of this project");
+    }
+
+    const baseBugFilter = { project: projectId, isActive: true };
+
+    const [
+        totalBugs,
+        open,
+        assigned,
+        awaitingVerification,
+        resolved,
+        rejected,
+        reviewRequested,
+        totalFixes,
+        pendingFixes,
+        acceptedFixes,
+        rejectedFixes
+    ] = await Promise.all([
+        Bug.countDocuments(baseBugFilter),
+        Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.OPEN }),
+        Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.ASSIGNED }),
+        Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.AWAITING_VERIFICATION }),
+        Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.RESOLVED }),
+        Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.REJECTED }),
+        Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.REVIEW_REQUESTED }),
+
+        BugFix.countDocuments({ project: projectId }),
+        BugFix.countDocuments({ project: projectId, status: "PENDING" }),
+        BugFix.countDocuments({ project: projectId, status: "ACCEPTED" }),
+        BugFix.countDocuments({ project: projectId, status: "REJECTED" })
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(
+            {
+                bugs: {
+                    total: totalBugs,
+                    open,
+                    assigned,
+                    awaitingVerification,
+                    resolved,
+                    rejected,
+                    reviewRequested
+                },
+                fixes: {
+                    total: totalFixes,
+                    pending: pendingFixes,
+                    accepted: acceptedFixes,
+                    rejected: rejectedFixes
+                }
+            },
+            "Project statistics fetched successfully"
+        )
+    );
+});

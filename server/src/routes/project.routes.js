@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     addMember, 
     createProject, 
+    getDeveloperWorkload, 
     getMyProjects, 
     getProjectMembers, 
     getProjectStats, 
@@ -112,6 +113,9 @@ router.route("/:projectId/leave")
 
 router.route("/:projectId/stats")
 .get(generalLimiter, verifyJWT, getProjectStats)
+
+router.route("/:projectId/workload")
+.get(generalLimiter, verifyJWT, getDeveloperWorkload)
 
 
 export default router;

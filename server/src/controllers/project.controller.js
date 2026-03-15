@@ -659,3 +659,59 @@ export const getProjectStats = asyncHandler(async (req, res) => {
         )
     );
 });
+
+export const getDeveloperWorkload = asyncHandler(async (req, res) => {
+
+    const { projectId } = req.params;
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if (!project.isMember(req.user._id)) {
+        throw new ApiError(403, "You are not a member of this project");
+    }
+
+    const workload = await Bug.aggregate([
+        {
+            $match: {
+                project: new mongoose.Types.ObjectId(projectId),
+                status: BUG_STATUS.ASSIGNED,
+                assignedTo: { $ne: null }
+            }
+        },
+        {
+            $group: {
+                _id: "$assignedTo",
+                assignedBugs: { $sum: 1 }
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "_id",
+                foreignField: "_id",
+                as: "developer"
+            }
+        },
+        {
+            $unwind: "$developer"
+        },
+        {
+            $project: {
+                _id: 0,
+                developer: {
+                    _id: "$developer._id",
+                    name: "$developer.name",
+                    email: "$developer.email"
+                },
+                assignedBugs: 1
+            }
+        },
+        {
+            $sort: { assignedBugs: -1 }
+        }
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(workload, "Developer workload fetched successfully")
+    );
+});

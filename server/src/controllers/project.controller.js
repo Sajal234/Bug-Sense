@@ -407,3 +407,191 @@ export const transferProjectLead = asyncHandler( async(req, res) => {
         new ApiResponse(project, "Project leadership transferred successfully")
     );
 })
+
+// leave project
+export const leaveProject = asyncHandler(async (req, res) => {
+
+    const { projectId } = req.params;
+    const userId = req.user._id;
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if (!project.isMember(userId)) {
+        throw new ApiError(403, "You are not a member of this project");
+    }
+
+    if (project.isLead(userId)) {
+        throw new ApiError(400,"Project lead cannot leave. Transfer leadership first.");
+    }
+
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        // Handle Assigned Bugs
+        const assignedBugs = await Bug.find({
+            project: projectId,
+            assignedTo: userId,
+            status: {
+                $in: [BUG_STATUS.ASSIGNED, BUG_STATUS.AWAITING_VERIFICATION]
+            }
+        }).session(session);
+
+        for (const bug of assignedBugs) {
+
+            // Reject pending fix if awaiting verification
+            if (bug.status === BUG_STATUS.AWAITING_VERIFICATION) {
+
+                const pendingFix = await BugFix.findOne({
+                    bug: bug._id,
+                    status: "PENDING"
+                }).session(session);
+
+                if (pendingFix) {
+                    pendingFix.status = "REJECTED";
+                    pendingFix.rejectionReason = "Developer left the project";
+                    await pendingFix.save({ session });
+                }
+            }
+
+            const previousState = bug.status;
+
+            bug.assignedTo = null;
+            bug.status = BUG_STATUS.OPEN;
+
+            bug.history.push({
+                action: BUG_ACTIONS.STATUS_UPDATED,
+                from: previousState,
+                to: BUG_STATUS.OPEN,
+                by: userId,
+                meta: "Developer left project"
+            });
+
+            await bug.save({ session });
+        }
+
+        // Reject Pending Review Bugs Created By Removed User
+        const pendingReviewBugs = await Bug.find({
+            project: projectId,
+            createdBy: userId,
+            status: BUG_STATUS.PENDING_REVIEW
+        }).session(session);
+
+        for (const bug of pendingReviewBugs) {
+            const previousState = bug.status;
+
+            bug.status = BUG_STATUS.REJECTED;
+            bug.isActive = false;
+            bug.reviewRequests = [];
+
+            bug.history.push({
+                action: BUG_ACTIONS.BUG_REJECTED,
+                from: previousState,
+                to: BUG_STATUS.REJECTED,
+                by: userId,
+                meta: "Reporter left the project"
+            });
+
+            await bug.save({ session });
+        }
+
+        // Cancel Review Requests made by this user
+        const reviewRequestBugs = await Bug.find({
+            project: projectId,
+            reviewRequests: {
+                $elemMatch: {
+                    requestedBy: userId,
+                    status: "PENDING"
+                }
+            }
+        }).session(session);
+
+        for (const bug of reviewRequestBugs) {
+
+            let restoreStatus = null;
+
+            bug.reviewRequests = bug.reviewRequests.map(r => {
+                if (
+                    r.requestedBy.toString() === userId.toString() &&
+                    r.status === "PENDING"
+                ) {
+                    r.status = "CANCELLED";
+                    restoreStatus = r.previousStatus;
+                }
+                return r;
+            });
+
+            if (bug.status === BUG_STATUS.REVIEW_REQUESTED && restoreStatus) {
+
+                let finalStatus;
+
+                if (restoreStatus === BUG_STATUS.ASSIGNED && !bug.assignedTo) {
+                    finalStatus = BUG_STATUS.OPEN;
+                } else {
+                    finalStatus = restoreStatus;
+                }
+
+                const prev = bug.status;
+                bug.status = finalStatus;
+
+                bug.history.push({
+                    action: BUG_ACTIONS.STATUS_UPDATED,
+                    from: prev,
+                    to: finalStatus,
+                    by: userId,
+                    meta: "Severity review cancelled due to developer leaving"
+                });
+            }
+
+            await bug.save({ session });
+        }
+
+        // Reject pending fixes submitted by user
+        await BugFix.updateMany(
+            {
+                project: projectId,
+                submittedBy: userId,
+                status: "PENDING"
+            },
+            {
+                $set: {
+                    status: "REJECTED",
+                    rejectionReason: "Developer left the project"
+                }
+            },
+            { session }
+        );
+
+        // Remove assignment from resolved bugs
+        await Bug.updateMany(
+            {
+                project: projectId,
+                assignedTo: userId,
+                status: BUG_STATUS.RESOLVED
+            },
+            { $set: { assignedTo: null } },
+            { session }
+        );
+
+        // Remove member from project
+        project.members = project.members.filter(
+            member => member.user.toString() !== userId.toString()
+        );
+
+        await project.save({ session });
+
+        await session.commitTransaction();
+    } catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+
+        session.endSession();
+
+    }
+
+    return res.status(200).json(
+        new ApiResponse(null, "You left the project successfully")
+    );
+});

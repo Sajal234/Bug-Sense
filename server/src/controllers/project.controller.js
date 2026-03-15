@@ -660,6 +660,7 @@ export const getProjectStats = asyncHandler(async (req, res) => {
     );
 });
 
+// developer workload
 export const getDeveloperWorkload = asyncHandler(async (req, res) => {
 
     const { projectId } = req.params;
@@ -675,7 +676,8 @@ export const getDeveloperWorkload = asyncHandler(async (req, res) => {
             $match: {
                 project: new mongoose.Types.ObjectId(projectId),
                 status: BUG_STATUS.ASSIGNED,
-                assignedTo: { $ne: null }
+                assignedTo: { $ne: null },
+                isActive: true
             }
         },
         {

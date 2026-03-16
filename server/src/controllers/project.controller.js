@@ -717,3 +717,50 @@ export const getDeveloperWorkload = asyncHandler(async (req, res) => {
         new ApiResponse(workload, "Developer workload fetched successfully")
     );
 });
+
+// change role
+export const changeMemberRole = asyncHandler( async(req, res) => {
+    const { projectId, userId } = req.params;
+    const { role } = req.body;
+
+    if(!mongoose.Types.ObjectId.isValid(userId)){
+        throw new ApiError(400, "Invalid user ID")
+    } 
+
+    if(!role){
+        throw new ApiError(400, "Role is required")
+    }
+
+    if(!PROJECT_ROLES.includes(role)){
+        throw new ApiError(400, "Invalid role selected")
+    }
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can change member roles")
+    }
+
+    if(project.lead.toString() === userId.toString()){
+        throw new ApiError(400, "Cannot change role of the project lead")
+    }
+
+    const member = project.members.find(
+        member => member.user.toString() === userId.toString()
+    )
+
+    if(!member){
+        throw new ApiError(404, "Member not found in the project")
+    }
+
+    if(member.role === role){
+        throw new ApiError(400, "Member already has this role")
+    }
+
+    member.role = role;
+    await project.save();
+
+    return res.status(200).json(
+        new ApiResponse(project, "Member role updated successfully")
+    )
+})

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
     addMember, 
+    changeMemberRole, 
     createProject, 
     getDeveloperWorkload, 
     getMyProjects, 
@@ -116,6 +117,9 @@ router.route("/:projectId/stats")
 
 router.route("/:projectId/workload")
 .get(generalLimiter, verifyJWT, getDeveloperWorkload)
+
+router.route("/:projectId/members/:userId/role")
+.patch(generalLimiter, verifyJWT, changeMemberRole)
 
 
 export default router;

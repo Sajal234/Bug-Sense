@@ -607,7 +607,12 @@ export const getProjectStats = asyncHandler(async (req, res) => {
         throw new ApiError(403, "You are not a member of this project");
     }
 
-    const baseBugFilter = { project: projectId, isActive: true };
+    const projectObjectId = new mongoose.Types.ObjectId(projectId);
+
+    const baseBugFilter = {
+        project: projectObjectId,
+        isActive: true
+    };
 
     const [
         totalBugs,
@@ -731,7 +736,9 @@ export const changeMemberRole = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Role is required")
     }
 
-    if(!PROJECT_ROLES.includes(role)){
+    const normalizedRole = role.toUpperCase();
+
+    if(!PROJECT_ROLES.includes(normalizedRole)){
         throw new ApiError(400, "Invalid role selected")
     }
 
@@ -753,11 +760,11 @@ export const changeMemberRole = asyncHandler( async(req, res) => {
         throw new ApiError(404, "Member not found in the project")
     }
 
-    if(member.role === role){
+    if(member.role === normalizedRole){
         throw new ApiError(400, "Member already has this role")
     }
 
-    member.role = role;
+    member.role = normalizedRole;
     await project.save();
 
     return res.status(200).json(

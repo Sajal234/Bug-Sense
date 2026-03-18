@@ -635,10 +635,10 @@ export const getProjectStats = asyncHandler(async (req, res) => {
         Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.REJECTED }),
         Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.REVIEW_REQUESTED }),
 
-        BugFix.countDocuments({ project: projectId }),
-        BugFix.countDocuments({ project: projectId, status: "PENDING" }),
-        BugFix.countDocuments({ project: projectId, status: "ACCEPTED" }),
-        BugFix.countDocuments({ project: projectId, status: "REJECTED" })
+        BugFix.countDocuments({ project: projectObjectId }),
+        BugFix.countDocuments({ project: projectObjectId, status: "PENDING" }),
+        BugFix.countDocuments({ project: projectObjectId, status: "ACCEPTED" }),
+        BugFix.countDocuments({ project: projectObjectId, status: "REJECTED" })
     ]);
 
     return res.status(200).json(

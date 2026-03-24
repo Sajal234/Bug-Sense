@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import userRouter from "./routes/auth.routes.js"
 import projectRouter from "./routes/project.routes.js"
+import userDashboardRouter from "./routes/user.routes.js"
 import mongoSanitize from 'express-mongo-sanitize';
 import xss from 'xss-clean';
 import { errorHandler } from "./middleware/error.middleware.js";
@@ -31,6 +32,8 @@ app.use(xss()); // Prevent XSS
 app.use("/api/v1/users", userRouter);
 
 app.use("/api/v1/projects", projectRouter);
+
+app.use("/api/v1/users", userDashboardRouter);
 
 
 

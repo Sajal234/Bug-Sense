@@ -55,6 +55,8 @@ export const getMyDashboard = asyncHandler(async (req, res) => {
         })
     ]);
 
+    const successRate = fixesSubmitted === 0 ? 0 : Math.round((fixesAccepted / fixesSubmitted) * 100);
+
     return res.status(200).json(
         new ApiResponse(
             {
@@ -63,7 +65,8 @@ export const getMyDashboard = asyncHandler(async (req, res) => {
                 bugsAssigned,
                 fixesSubmitted,
                 fixesAccepted,
-                fixesRejected
+                fixesRejected,
+                successRate
             },
             "Dashboard data fetched successfully"
         )

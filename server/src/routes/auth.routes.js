@@ -2,8 +2,14 @@
 import { Router } from "express";
 import { registerUser, loginUser, logoutUser, refreshAccessToken } from "../controllers/auth.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
-
+import { getMyDashboard } from "../controllers/user.controller.js";
 import rateLimit from 'express-rate-limit';
+
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100
+});
+
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 5, // 5 requests per window
@@ -19,5 +25,10 @@ router.route("/login").post(authLimiter, loginUser);
 router.route("/logout").post(verifyJWT, logoutUser);
 
 router.route("/refresh-token").post(authLimiter, refreshAccessToken);
+
+
+// Dashboards
+router.route("/me/dashboard")
+.get(generalLimiter, verifyJWT, getMyDashboard);
 
 export default router;

@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { registerUser, loginUser, logoutUser, refreshAccessToken } from "../controllers/auth.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
-import { getMyDashboard } from "../controllers/user.controller.js";
+import { getMyDashboard, getUserDashboard } from "../controllers/user.controller.js";
 import rateLimit from 'express-rate-limit';
 
 const generalLimiter = rateLimit({
@@ -30,5 +30,8 @@ router.route("/refresh-token").post(authLimiter, refreshAccessToken);
 // Dashboards
 router.route("/me/dashboard")
 .get(generalLimiter, verifyJWT, getMyDashboard);
+
+router.route("/:userId/dashboard")
+.get(generalLimiter, verifyJWT, getUserDashboard)
 
 export default router;

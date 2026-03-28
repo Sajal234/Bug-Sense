@@ -11,9 +11,16 @@ export const api = axios.create({
 
 // We can add interceptors later here (e.g., to handle 401 token refresh automatically)
 api.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        // TODO: Implement Token Refresh logic if error.response.status === 401
-        return Promise.reject(error);
-    }
+  (response) => response,
+  async (error) => {
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      "Something went wrong";
+
+    return Promise.reject({
+      ...error,
+      message
+    });
+  }
 );

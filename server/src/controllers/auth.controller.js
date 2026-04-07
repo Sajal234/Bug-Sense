@@ -23,6 +23,7 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
 
+    const normalizedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
 
 
@@ -35,7 +36,7 @@ const registerUser = asyncHandler( async (req, res) => {
     
     // create new user
     const user = await User.create({
-        name,
+        name: normalizedName,
         email : normalizedEmail,
         passwordHash : password
     });

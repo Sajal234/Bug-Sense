@@ -732,11 +732,11 @@ export const changeMemberRole = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Invalid user ID")
     } 
 
-    if(!role){
-        throw new ApiError(400, "Role is required")
+    if (!role || typeof role !== "string" || role.trim() === "") {
+        throw new ApiError(400, "Role is required");
     }
 
-    const normalizedRole = role.toUpperCase();
+    const normalizedRole = role.trim().toUpperCase();
 
     if(!PROJECT_ROLES.includes(normalizedRole)){
         throw new ApiError(400, "Invalid role selected")

@@ -23,6 +23,11 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
 
+    if (/\s/.test(password)) {
+        throw new ApiError(400, "Password cannot contain spaces");
+    }
+
+
     const normalizedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -206,6 +211,10 @@ const changePassword = asyncHandler( async(req, res) => {
         newPassword === ""
     ) {
         throw new ApiError(400, "All fields are required");
+    }
+
+    if (/\s/.test(newPassword)) {
+        throw new ApiError(400, "Password cannot contain spaces");
     }
 
     const user = await User.findById(req.user?._id).select("+passwordHash");

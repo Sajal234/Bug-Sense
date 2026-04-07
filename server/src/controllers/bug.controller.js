@@ -498,7 +498,7 @@ export const requestReopen = asyncHandler( async(req, res) => {
     const {projectId, bugId} = req.params;
     const {reason} = req.body;
 
-    if(!reason?.trim()){
+    if (typeof reason !== "string" || reason.trim() === "") {
         throw new ApiError(400, "Reopen reason is required");
     }
 

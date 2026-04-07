@@ -576,8 +576,8 @@ export const rejectReopen = asyncHandler( async(req, res) => {
     const {projectId, bugId} = req.params;
     const {reason} = req.body;
 
-    if(!reason?.trim()){
-        throw new ApiError(400, "rejection reason is required")
+    if (typeof reason !== "string" || reason.trim() === "") {
+        throw new ApiError(400, "rejection reason is required");
     }
 
     const project = await getProjectByIdOrThrow(projectId);

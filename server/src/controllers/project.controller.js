@@ -15,9 +15,11 @@ import { BugFix } from "../models/BugFix.js";
 export const createProject = asyncHandler( async(req, res) => {
     const { name, description } = req.body;
 
-    if(!name || name.trim()===""){
+    if(!name || typeof name !== "string" || name.trim()===""){
         throw new ApiError(400, "Project name is required");
     }
+
+    const normalizedName = name.trim();
 
     // generating invite code
     const generateInviteCode = () => {
@@ -30,8 +32,8 @@ export const createProject = asyncHandler( async(req, res) => {
     while (!project && attempts < 3) {
         try {
             project = await Project.create({
-                name,
-                description,
+                name: normalizedName,
+                description: typeof description === "string" ? description.trim() : description,
                 lead: req.user._id,
                 members: [{ user: req.user._id, role: "FULLSTACK" }],
                 inviteCode: generateInviteCode()

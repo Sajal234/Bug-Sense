@@ -151,14 +151,21 @@ export const addMember = asyncHandler( async(req, res) => {
         throw new ApiError(404, "User not found");
     }
 
-    const memberRole = role || "FULLSTACK";
-    if(!PROJECT_ROLES.includes(memberRole)){
+    const memberRole = role === undefined ? "FULLSTACK" : role;
+
+    if (typeof memberRole !== "string" || memberRole.trim() === "") {
+        throw new ApiError(400, "Invalid role selected");
+    }
+
+    const normalizedRole = memberRole.trim().toUpperCase();
+
+    if (!PROJECT_ROLES.includes(normalizedRole)) {
         throw new ApiError(400, "Invalid role selected");
     }
 
     project.members.push({
         user : userId,
-        role : memberRole
+        role : normalizedRole
     })
 
     await project.save();

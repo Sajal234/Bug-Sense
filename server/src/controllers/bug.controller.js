@@ -752,8 +752,8 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
     const {projectId, bugId} = req.params;
     const {reason, proposedSeverity} = req.body;
 
-    if(!reason?.trim()){
-        throw new ApiError(400, "Review reason is required")
+    if (typeof reason !== "string" || reason.trim() === "") {
+        throw new ApiError(400, "Review reason is required");
     }
 
     if(proposedSeverity && !Object.values(BUG_SEVERITY).includes(proposedSeverity)){

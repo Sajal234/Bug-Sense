@@ -28,19 +28,33 @@ export const createBug = asyncHandler( async(req, res) => {
     }
 
     if (
-        !title?.trim() ||
-        !description?.trim() ||
-        !bugType ||
-        !environment
+        typeof title !== "string" ||
+        typeof description !== "string" ||
+        typeof bugType !== "string" ||
+        typeof environment !== "string" ||
+        title.trim() === "" ||
+        description.trim() === "" ||
+        bugType.trim() === "" ||
+        environment.trim() === ""
     ){
         throw new ApiError(400, "All required fields must be provided");
     }
 
-    if (!Object.values(BUG_ENVIRONMENT).includes(environment)) {
+    const normalizedTitle = title.trim();
+    const normalizedDescription = description.trim();
+    const normalizedBugType = bugType.trim().toUpperCase();
+    const normalizedEnvironment = environment.trim().toUpperCase();
+    const normalizedStackTrace =
+        typeof stackTrace === "string" ? stackTrace.trim() : stackTrace;
+    const normalizedModuleName =
+        typeof moduleName === "string" ? moduleName.trim() : moduleName;
+
+
+    if (!Object.values(BUG_ENVIRONMENT).includes(normalizedEnvironment)) {
         throw new ApiError(400, "Invalid environment");
     }
 
-    if (!Object.values(BUG_TYPE).includes(bugType)) {
+    if (!Object.values(BUG_TYPE).includes(normalizedBugType)) {
         throw new ApiError(400, "Invalid bug type");
     }
 
@@ -61,18 +75,18 @@ export const createBug = asyncHandler( async(req, res) => {
 
     // create bug
     const bug = await Bug.create({
-        title,
-        description,
+        title: normalizedTitle,
+        description: normalizedDescription,
         project : projectId,
         createdBy : req.user._id,
         severity : BUG_SEVERITY.UNCONFIRMED,
         assignedTo : null,
         suggestedSeverity,
-        bugType,
+        bugType : normalizedBugType,
         status : BUG_STATUS.PENDING_REVIEW,
-        environment,
-        stackTrace,
-        moduleName,
+        environment : normalizedEnvironment,
+        stackTrace : normalizedStackTrace,
+        moduleName : normalizedModuleName,
         history : [{
             action : BUG_ACTIONS.BUG_CREATED,
             from : null,

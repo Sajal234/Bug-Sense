@@ -76,14 +76,21 @@ export const joinProject = asyncHandler( async(req, res) => {
     }
 
 
-    const memberRole = role || "FULLSTACK";
-    if(!PROJECT_ROLES.includes(memberRole)){
+    const memberRole = role === undefined ? "FULLSTACK" : role;
+
+    if (typeof memberRole !== "string" || memberRole.trim() === "") {
+        throw new ApiError(400, "Invalid role selected");
+    }
+
+    const normalizedRole = memberRole.trim().toUpperCase();
+
+    if (!PROJECT_ROLES.includes(normalizedRole)) {
         throw new ApiError(400, "Invalid role selected");
     }
 
     project.members.push({
         user : req.user._id,
-        role : memberRole
+        role : normalizedRole
     })
 
     await project.save();

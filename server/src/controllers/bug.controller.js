@@ -928,8 +928,8 @@ export const rejectSeverityReview = asyncHandler( async(req, res) => {
 
     const {reason} = req.body;
 
-    if(!reason?.trim()){
-        throw new ApiError(400, "Rejection reason is required")
+    if (typeof reason !== "string" || reason.trim() === "") {
+        throw new ApiError(400, "Rejection reason is required");
     }
 
     const project = await getProjectByIdOrThrow(projectId);

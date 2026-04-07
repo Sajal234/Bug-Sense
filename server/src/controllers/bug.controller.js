@@ -404,12 +404,22 @@ export const submitFix = asyncHandler( async(req, res) => {
     const {commitUrl, summary, proof} = req.body;
     
     
-    if(!summary?.trim() || !commitUrl?.trim()){
-        throw new ApiError(400, "Summary and commitUrl are required")
+    if (
+        typeof summary !== "string" ||
+        typeof commitUrl !== "string" ||
+        summary.trim() === "" ||
+        commitUrl.trim() === ""
+    ) {
+        throw new ApiError(400, "Summary and commitUrl are required");
     }
+
+    const normalizedSummary = summary.trim();
+    const normalizedCommitUrl = commitUrl.trim();
+    const normalizedProof = typeof proof === "string" ? proof.trim() : proof;
+
     
     const URL_REGEX = /^https?:\/\/.+\..+/;
-    if (!URL_REGEX.test(commitUrl.trim())) {
+    if (!URL_REGEX.test(normalizedCommitUrl)) {
         throw new ApiError(400, "commitUrl must be a valid URL (e.g., https://github.com/...)");
     }
     
@@ -451,10 +461,10 @@ export const submitFix = asyncHandler( async(req, res) => {
         bug : bug._id,
         project : projectId,
         submittedBy : req.user._id,
-        commitUrl : commitUrl.trim(),
-        summary : summary.trim(),
+        commitUrl : normalizedCommitUrl,
+        summary : normalizedSummary,
         status : "PENDING",
-        proof 
+        proof : normalizedProof
     }], { session });
 
     bug.fixes.push(fix._id);

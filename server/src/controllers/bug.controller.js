@@ -268,7 +268,7 @@ export const rejectBug = asyncHandler( async(req, res) => {
     const {projectId, bugId} = req.params;
     const {reason} = req.body;
 
-    if(!reason || !reason.trim()){
+    if (typeof reason !== "string" || reason.trim() === "") {
         throw new ApiError(400, "Rejection reason is required");
     }
 

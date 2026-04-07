@@ -55,7 +55,7 @@ export const createProject = asyncHandler( async(req, res) => {
 export const joinProject = asyncHandler( async(req, res) => {
     const { inviteCode, role } = req.body;
 
-    if(!inviteCode || inviteCode.trim()===""){
+    if (!inviteCode || typeof inviteCode !== "string" || inviteCode.trim() === "") {
         throw new ApiError(400, "Invite code is required");
     }
 

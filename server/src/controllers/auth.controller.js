@@ -199,8 +199,13 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
 const changePassword = asyncHandler( async(req, res) => {
     const { oldPassword, newPassword } = req.body;
     
-    if(!oldPassword || !newPassword){
-        throw new ApiError(400, "All fields are required")
+    if (
+        typeof oldPassword !== "string" ||
+        typeof newPassword !== "string" ||
+        oldPassword === "" ||
+        newPassword === ""
+    ) {
+        throw new ApiError(400, "All fields are required");
     }
 
     const user = await User.findById(req.user?._id).select("+passwordHash");

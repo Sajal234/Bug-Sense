@@ -12,11 +12,19 @@ const registerUser = asyncHandler( async (req, res) => {
 
 
     // validation of each field
-    if([name, email, password].some((field) => !field || field?.trim() === "")){
+    if (
+        typeof name !== "string" ||
+        typeof email !== "string" ||
+        typeof password !== "string" ||
+        name.trim() === "" ||
+        email.trim() === "" ||
+        password.trim() === ""
+    ) {
         throw new ApiError(400, "All fields are required");
     }
 
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+
 
     // check if user already exists
     const existingUser = await User.findOne({email : normalizedEmail})
@@ -69,11 +77,17 @@ const loginUser = asyncHandler( async(req, res) => {
     const { email, password } = req.body;
 
     // validation of each field
-    if(!email || !password || email.trim()==="" || password.trim()===""){
+    if (
+        typeof email !== "string" ||
+        typeof password !== "string" ||
+        email.trim() === "" ||
+        password.trim() === ""
+    ) {
         throw new ApiError(400, "Email and password are required");
     }
 
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+
 
     // find user by using email
     const user = await User.findOne({email: normalizedEmail}).select("+passwordHash");

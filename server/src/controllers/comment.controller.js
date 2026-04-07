@@ -12,8 +12,8 @@ export const addComment = asyncHandler( async(req, res) => {
     const {projectId, bugId} = req.params;
     const { text } = req.body;
 
-    if(!text?.trim()){
-        throw new ApiError(400, "Comment text is required")
+    if (!text || typeof text !== "string" || text.trim() === "") {
+        throw new ApiError(400, "Comment text is required");
     }
 
     const project = await getProjectByIdOrThrow(projectId);
@@ -94,8 +94,8 @@ export const editComment = asyncHandler( async(req, res) => {
     const { commentId, projectId, bugId } = req.params;
     const { text } = req.body;
 
-    if(!text?.trim()){
-        throw new ApiError(400, "Updated comment text is required")
+    if (!text || typeof text !== "string" || text.trim() === "") {
+        throw new ApiError(400, "Updated comment text is required");
     }
 
     if(!mongoose.Types.ObjectId.isValid(commentId)){

@@ -756,8 +756,18 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Review reason is required");
     }
 
-    if(proposedSeverity && !Object.values(BUG_SEVERITY).includes(proposedSeverity)){
-        throw new ApiError(400, "Invalid proposed severity")
+    const normalizedProposedSeverity =
+        proposedSeverity === undefined || proposedSeverity === null
+            ? null
+            : typeof proposedSeverity === "string"
+                ? proposedSeverity.trim().toUpperCase()
+                : proposedSeverity;
+
+    if (
+        normalizedProposedSeverity !== null &&
+        !Object.values(BUG_SEVERITY).includes(normalizedProposedSeverity)
+    ) {
+        throw new ApiError(400, "Invalid proposed severity");
     }
 
     const project = await getProjectByIdOrThrow(projectId);
@@ -768,7 +778,7 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
 
     const bug = await getBugByIdOrThrow(bugId, projectId);
 
-    if (proposedSeverity && proposedSeverity === bug.severity) {
+    if (normalizedProposedSeverity && normalizedProposedSeverity === bug.severity) {
         throw new ApiError(400, "Proposed severity is same as current severity");
     }
 
@@ -803,7 +813,7 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
         bug.reviewRequests.push({
             requestedBy : req.user._id,
             reason : reason.trim(),
-            proposedSeverity : proposedSeverity || null, 
+            proposedSeverity : normalizedProposedSeverity, 
             status : "PENDING",
             previousStatus : previousState,
         });
@@ -815,8 +825,8 @@ export const requestSeverityReview = asyncHandler( async(req, res) => {
             from : previousState,
             to : BUG_STATUS.REVIEW_REQUESTED,
             by : req.user._id,
-            meta : proposedSeverity
-                ? `Proposed severity: ${proposedSeverity}`
+            meta : normalizedProposedSeverity
+                ? `Proposed severity: ${normalizedProposedSeverity}`
                 : "No severity suggested"
         });
 
@@ -839,13 +849,16 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
     const {projectId, bugId} = req.params;
     const {newSeverity} = req.body;
 
-    if(!newSeverity){
-        throw new ApiError(400, "New severity is required")
+    if (typeof newSeverity !== "string" || newSeverity.trim() === "") {
+        throw new ApiError(400, "New severity is required");
     }
 
-    if (!Object.values(BUG_SEVERITY).includes(newSeverity)) {
-        throw new ApiError(400, "Invalid severity value");
-    }
+    const normalizedNewSeverity = newSeverity.trim().toUpperCase();
+
+    if (!Object.values(BUG_SEVERITY).includes(normalizedNewSeverity)) {
+    throw new ApiError(400, "Invalid severity value");
+}
+
 
     const project = await getProjectByIdOrThrow(projectId);
 
@@ -867,7 +880,7 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
         throw new ApiError(400, "No pending severity review found");
     }
 
-    if (newSeverity === bug.severity) {
+    if (normalizedNewSeverity === bug.severity) {
         throw new ApiError(400, "New severity must differ from current severity");
     }
 
@@ -880,12 +893,12 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
     try{
         session.startTransaction();
 
-        bug.severity = newSeverity;
+        bug.severity = normalizedNewSeverity;
 
         bug.history.push({
             action: BUG_ACTIONS.SEVERITY_UPDATED,
             from: previousSeverity,
-            to: newSeverity,
+            to: normalizedNewSeverity,
             by: req.user._id
         });
 
@@ -903,7 +916,7 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
             from: BUG_STATUS.REVIEW_REQUESTED,
             to: finalStatus,
             by: req.user._id,
-            meta: `Severity changed from ${previousSeverity} to ${newSeverity}`
+            meta: `Severity changed from ${previousSeverity} to ${normalizedNewSeverity}`
         });
 
         await bug.save({ session });

@@ -10,7 +10,8 @@ import {
     joinProject, 
     leaveProject, 
     removeMember, 
-    transferProjectLead 
+    transferProjectLead,
+    getProjectInviteCode
 } from "../controllers/project.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import {
@@ -120,6 +121,9 @@ router.route("/:projectId/workload")
 
 router.route("/:projectId/members/:userId/role")
 .patch(generalLimiter, verifyJWT, changeMemberRole)
+
+router.route("/:projectId/invite-code")
+.get(generalLimiter, verifyJWT, getProjectInviteCode)
 
 
 export default router;

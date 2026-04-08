@@ -828,3 +828,21 @@ export const changeMemberRole = asyncHandler( async(req, res) => {
         new ApiResponse(project, "Member role updated successfully")
     )
 })
+
+// get invite code
+export const getProjectInviteCode = asyncHandler( async(req, res) => {
+    const {projectId} = req.params;
+
+    const project = await getProjectByIdOrThrow(projectId);
+
+    if(!project.isLead(req.user._id)){
+        throw new ApiError(403, "Only project lead can view the invite code")
+    }
+
+    return res.status(200).json(
+        new ApiResponse(
+            {inviteCode : project.inviteCode},
+            "Invite code fetched successfully"
+        )
+    );
+})

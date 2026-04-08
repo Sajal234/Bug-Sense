@@ -62,19 +62,6 @@ export const joinProject = asyncHandler( async(req, res) => {
     }
 
     const normalizedInviteCode = inviteCode.trim().toUpperCase();
-    const project = await Project.findOne({
-        inviteCode: normalizedInviteCode,
-        isActive: true
-    });
-
-    if(!project){
-        throw new ApiError(404, "Project not found");
-    }
-
-    if(project.isMember(req.user._id)){
-        throw new ApiError(409, "You are already a member of this project");
-    }
-
 
     const memberRole = role === undefined ? "FULLSTACK" : role;
 
@@ -88,12 +75,41 @@ export const joinProject = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Invalid role selected");
     }
 
-    project.members.push({
-        user : req.user._id,
-        role : normalizedRole
-    })
+    const project = await Project.findOneAndUpdate(
+        {
+            inviteCode: normalizedInviteCode,
+            isActive: true,
+            "members.user": { $ne: req.user._id }
+        },
+        {
+            $push: {
+                members: {
+                    user: req.user._id,
+                    role: normalizedRole
+                }
+            }
+        },
+        {
+            new: true,
+            runValidators: true
+        }
+    );
 
-    await project.save();
+    if (!project) {
+        const existingProject = await Project.findOne({
+            inviteCode: normalizedInviteCode
+        });
+
+        if (!existingProject || !existingProject.isActive) {
+            throw new ApiError(404, "Project not found");
+        }
+
+        if (existingProject.isMember(req.user._id)) {
+            throw new ApiError(409, "You are already a member of this project");
+        }
+
+        throw new ApiError(500, "Failed to join project");
+    }
 
     return res.status(200)
     .json(
@@ -101,7 +117,7 @@ export const joinProject = asyncHandler( async(req, res) => {
             project,
             "Project joined successfully"
         )
-    )    
+    );
 })
 
 // get all projects of user
@@ -133,17 +149,9 @@ export const addMember = asyncHandler( async(req, res) => {
     if(!userId){
         throw new ApiError(400, "User ID is required");
     }
-    const project = await getProjectByIdOrThrow(projectId);
-    if(!project.isLead(req.user._id)){
-        throw new ApiError(403, "Only project lead can add members")
-    }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
         throw new ApiError(400, "Invalid user ID");
-    }
-
-    if (project.isMember(userId)) {
-        throw new ApiError(409, "User is already a member");
     }
 
     const user = await User.findById(userId);
@@ -163,12 +171,39 @@ export const addMember = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Invalid role selected");
     }
 
-    project.members.push({
-        user : userId,
-        role : normalizedRole
-    })
+    const project = await Project.findOneAndUpdate(
+        {
+            _id: projectId,
+            lead: req.user._id,
+            "members.user": { $ne: userId }
+        },
+        {
+            $push: {
+                members: {
+                    user: userId,
+                    role: normalizedRole
+                }
+            }
+        },
+        {
+            new: true,
+            runValidators: true
+        }
+    );
 
-    await project.save();
+    if (!project) {
+        const existingProject = await getProjectByIdOrThrow(projectId);
+
+        if (!existingProject.isLead(req.user._id)) {
+            throw new ApiError(403, "Only project lead can add members");
+        }
+
+        if (existingProject.isMember(userId)) {
+            throw new ApiError(409, "User is already a member");
+        }
+
+        throw new ApiError(500, "Failed to add member");
+    }
 
     return res.status(200)
     .json(

@@ -144,20 +144,26 @@ export const getMyProjects = asyncHandler( async(req, res) => {
 // add member to project
 export const addMember = asyncHandler( async(req, res) => {
     const { projectId } = req.params;
-    const { role, userId } = req.body;
+    const { role, email } = req.body;
 
-    if(!userId){
-        throw new ApiError(400, "User ID is required");
+    if(typeof email !== "string" || email.trim() === ""){
+        throw new ApiError(400, "Email is required");
     }
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApiError(400, "Invalid user ID");
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+        throw new ApiError(400, "Invalid email");
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findOne({ email : normalizedEmail });
     if(!user){
         throw new ApiError(404, "User not found");
     }
+
+    const userId = user._id;
 
     const memberRole = role === undefined ? "FULLSTACK" : role;
 

@@ -18,21 +18,23 @@ const validNewLeadId = "507f1f77bcf86cd799439014";
 
 test("joinProject normalizes invite code and role before saving membership", async () => {
     const originalFindOne = Project.findOne;
+    const originalFindOneAndUpdate = Project.findOneAndUpdate;
 
     const project = {
         inviteCode: "ABCD1234",
-        members: [],
-        isMember: () => false,
-        async save() {
-            return this;
-        }
+        members: [{ user: validMemberId, role: "BACKEND" }],
+        isMember: () => false
     };
 
     let receivedFilter;
+    let receivedUpdate;
+    let receivedOptions;
 
     try {
-        Project.findOne = async (filter) => {
+        Project.findOneAndUpdate = async (filter, update, options) => {
             receivedFilter = filter;
+            receivedUpdate = update;
+            receivedOptions = options;
             return project;
         };
 
@@ -48,22 +50,36 @@ test("joinProject normalizes invite code and role before saving membership", asy
         assert.equal(res.statusCode, 200);
         assert.deepEqual(receivedFilter, {
             inviteCode: "ABCD1234",
-            isActive: true
+            isActive: true,
+            "members.user": { $ne: validMemberId }
         });
-        assert.deepEqual(project.members, [
-            { user: validMemberId, role: "BACKEND" }
-        ]);
+        assert.deepEqual(receivedUpdate, {
+            $push: {
+                members: {
+                    user: validMemberId,
+                    role: "BACKEND"
+                }
+            }
+        });
+        assert.deepEqual(receivedOptions, {
+            new: true,
+            runValidators: true
+        });
         assert.equal(res.body?.message, "Project joined successfully");
     } finally {
         Project.findOne = originalFindOne;
+        Project.findOneAndUpdate = originalFindOneAndUpdate;
     }
 });
 
 test("joinProject rejects users who are already members", async () => {
     const originalFindOne = Project.findOne;
+    const originalFindOneAndUpdate = Project.findOneAndUpdate;
 
     try {
+        Project.findOneAndUpdate = async () => null;
         Project.findOne = async () => ({
+            isActive: true,
             isMember: () => true
         });
 
@@ -78,26 +94,32 @@ test("joinProject rejects users who are already members", async () => {
         assert.equal(nextError?.message, "You are already a member of this project");
     } finally {
         Project.findOne = originalFindOne;
+        Project.findOneAndUpdate = originalFindOneAndUpdate;
     }
 });
 
 test("addMember adds a normalized role for a valid user", async () => {
     const originalProjectFindById = Project.findById;
+    const originalFindOneAndUpdate = Project.findOneAndUpdate;
     const originalUserFindById = User.findById;
 
     const project = {
         _id: validProjectId,
         lead: { toString: () => validLeadId },
-        members: [],
-        isLead: (userId) => userId === validLeadId,
-        isMember: (userId) => project.members.some((member) => member.user === userId),
-        async save() {
-            return this;
-        }
+        members: [{ user: validMemberId, role: "FRONTEND" }]
     };
 
+    let receivedFilter;
+    let receivedUpdate;
+    let receivedOptions;
+
     try {
-        Project.findById = async () => project;
+        Project.findOneAndUpdate = async (filter, update, options) => {
+            receivedFilter = filter;
+            receivedUpdate = update;
+            receivedOptions = options;
+            return project;
+        };
         User.findById = async () => ({ _id: validMemberId, name: "Member" });
 
         const { res, nextError } = await invokeHandler(addMember, {
@@ -111,12 +133,27 @@ test("addMember adds a normalized role for a valid user", async () => {
 
         assert.equal(nextError, undefined);
         assert.equal(res.statusCode, 200);
-        assert.deepEqual(project.members, [
-            { user: validMemberId, role: "FRONTEND" }
-        ]);
+        assert.deepEqual(receivedFilter, {
+            _id: validProjectId,
+            lead: validLeadId,
+            "members.user": { $ne: validMemberId }
+        });
+        assert.deepEqual(receivedUpdate, {
+            $push: {
+                members: {
+                    user: validMemberId,
+                    role: "FRONTEND"
+                }
+            }
+        });
+        assert.deepEqual(receivedOptions, {
+            new: true,
+            runValidators: true
+        });
         assert.equal(res.body?.message, "Member added successfully");
     } finally {
         Project.findById = originalProjectFindById;
+        Project.findOneAndUpdate = originalFindOneAndUpdate;
         User.findById = originalUserFindById;
     }
 });

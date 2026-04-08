@@ -4,6 +4,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+
+
 
 const registerUser = asyncHandler( async (req, res) => {
 
@@ -62,12 +65,16 @@ const registerUser = asyncHandler( async (req, res) => {
     )
 });
 
+const hashToken = (token) => {
+    return crypto.createHash("sha256").update(token).digest("hex");
+};
+
 const generateAccessAndRefreshToken = async(user) => {
     try {
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
 
-        user.refreshToken = refreshToken;
+        user.refreshToken = hashToken(refreshToken);
         await user.save({validateBeforeSave: false});
 
         return {accessToken, refreshToken};
@@ -174,7 +181,7 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
             throw new ApiError(401, "Invalid refresh token");
         }
 
-        if(incomingRefreshToken !== user?.refreshToken){
+        if(hashToken(incomingRefreshToken) !== user?.refreshToken){
             throw new ApiError(401, "Refresh token is expired or used");
         }
 

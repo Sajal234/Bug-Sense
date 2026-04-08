@@ -59,6 +59,13 @@ const bugFixSchema = new Schema(
     }
 );
 
-bugFixSchema.index({ bug: 1, status: 1 });
+bugFixSchema.index(
+    { bug: 1, status: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { status: "PENDING" }
+    }
+);
+
 
 export const BugFix = mongoose.model("BugFix", bugFixSchema);

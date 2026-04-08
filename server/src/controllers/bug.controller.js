@@ -481,6 +481,11 @@ export const submitFix = asyncHandler( async(req, res) => {
 
     await session.commitTransaction();
     } catch (err) {
+        if (err?.code === 11000) {
+            await session.abortTransaction();
+            throw new ApiError(409, "A fix is already pending");
+        }
+
         await session.abortTransaction();
         throw err;
     } finally {

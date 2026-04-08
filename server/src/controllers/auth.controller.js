@@ -226,14 +226,23 @@ const changePassword = asyncHandler( async(req, res) => {
     }
 
     user.passwordHash = newPassword;
-    await user.save();
+    user.refreshToken = undefined;
+    await user.save({ validateBeforeSave: false });
 
-    return res.status(200).json(
+    const options = {
+        httpOnly : true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax"
+    };
+
+    return res.status(200)
+    .clearCookie("refreshToken", options)
+    .json(
         new ApiResponse(
-            {},
-            "Password changed successfully"
-        )
+        {},
+        "Password changed successfully. Please log in again."
     )
+);
 })
 
 export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword };

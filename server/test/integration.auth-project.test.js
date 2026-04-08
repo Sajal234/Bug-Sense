@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import request from "supertest";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
+import { Project } from "../src/models/Project.js";
+import { Bug } from "../src/models/Bug.js";
+import { BugFix } from "../src/models/BugFix.js";
+import { User } from "../src/models/User.js";
 
 let mongoServer;
 let app;
@@ -29,6 +33,29 @@ const loginUser = async ({ email, password }) => {
     return request(app)
         .post("/api/v1/users/login")
         .send({ email, password });
+};
+
+const seedUser = async ({ name, email, password }) => {
+    const user = await User.create({
+        name,
+        email,
+        passwordHash: password
+    });
+
+    return {
+        user,
+        token: user.generateAccessToken()
+    };
+};
+
+const seedProject = async ({ leadId, name, description }) => {
+    return Project.create({
+        name,
+        description,
+        lead: leadId,
+        members: [{ user: leadId, role: "FULLSTACK" }],
+        inviteCode: `TEST${Math.random().toString(16).slice(2, 10).toUpperCase()}`
+    });
 };
 
 const createProject = async ({ token, name, description }) => {
@@ -160,57 +187,99 @@ const deleteCommentRequest = async ({ projectId, bugId, commentId, token }) => {
         .set("Authorization", `Bearer ${token}`);
 };
 
+const getProjectMembersRequest = async ({ projectId, token }) => {
+    return request(app)
+        .get(`/api/v1/projects/${projectId}/members`)
+        .set("Authorization", `Bearer ${token}`);
+};
+
+const getProjectStatsRequest = async ({ projectId, token }) => {
+    return request(app)
+        .get(`/api/v1/projects/${projectId}/stats`)
+        .set("Authorization", `Bearer ${token}`);
+};
+
+const getDeveloperWorkloadRequest = async ({ projectId, token }) => {
+    return request(app)
+        .get(`/api/v1/projects/${projectId}/workload`)
+        .set("Authorization", `Bearer ${token}`);
+};
+
+const getProjectBugsRequest = async ({ projectId, token, query = "" }) => {
+    return request(app)
+        .get(`/api/v1/projects/${projectId}/bugs${query}`)
+        .set("Authorization", `Bearer ${token}`);
+};
+
+const getBugInfoRequest = async ({ projectId, bugId, token }) => {
+    return request(app)
+        .get(`/api/v1/projects/${projectId}/bugs/${bugId}`)
+        .set("Authorization", `Bearer ${token}`);
+};
+
+const leaveProjectRequest = async ({ projectId, token }) => {
+    return request(app)
+        .patch(`/api/v1/projects/${projectId}/leave`)
+        .set("Authorization", `Bearer ${token}`);
+};
+
+const removeMemberRequest = async ({ projectId, token, userId }) => {
+    return request(app)
+        .patch(`/api/v1/projects/${projectId}/remove-member`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ userId });
+};
+
+const getMyDashboardRequest = async ({ token }) => {
+    return request(app)
+        .get("/api/v1/users/me/dashboard")
+        .set("Authorization", `Bearer ${token}`);
+};
+
+const getUserDashboardRequest = async ({ token, userId }) => {
+    return request(app)
+        .get(`/api/v1/users/${userId}/dashboard`)
+        .set("Authorization", `Bearer ${token}`);
+};
+
 const createProjectTeam = async () => {
     const password = "secret123";
     const leadEmail = uniqueEmail("lead");
     const memberEmail = uniqueEmail("member");
 
-    await registerUser({
+    const { user: leadUser, token: leadToken } = await seedUser({
         name: "Lead",
         email: leadEmail,
         password
     });
 
-    await registerUser({
+    const { user: memberUser, token: memberToken } = await seedUser({
         name: "Member",
         email: memberEmail,
         password
     });
 
-    const leadLoginResponse = await loginUser({ email: leadEmail, password });
-    const memberLoginResponse = await loginUser({ email: memberEmail, password });
-
-    assert.equal(leadLoginResponse.status, 200);
-    assert.equal(memberLoginResponse.status, 200);
-
-    const leadToken = leadLoginResponse.body.data.accessToken;
-    const memberToken = memberLoginResponse.body.data.accessToken;
-    const memberId = memberLoginResponse.body.data.user._id;
-
-    const projectResponse = await createProject({
-        token: leadToken,
+    const project = await seedProject({
+        leadId: leadUser._id,
         name: "Integration Project",
         description: "Project for bug workflow integration"
     });
 
-    assert.equal(projectResponse.status, 201);
-
-    const projectId = projectResponse.body.data._id;
-
     const addMemberResponse = await addMemberToProject({
-        projectId,
+        projectId: project._id.toString(),
         token: leadToken,
-        userId: memberId,
+        userId: memberUser._id.toString(),
         role: "BACKEND"
     });
 
     assert.equal(addMemberResponse.status, 200);
 
     return {
-        projectId,
+        projectId: project._id.toString(),
         leadToken,
         memberToken,
-        memberId
+        memberId: memberUser._id.toString(),
+        leadId: leadUser._id.toString()
     };
 };
 
@@ -913,4 +982,381 @@ test("project members can add, edit, fetch, and delete bug comments", async () =
 
     assert.equal(getCommentsAfterDeleteResponse.status, 200);
     assert.equal(getCommentsAfterDeleteResponse.body.data.comments.length, 0);
+});
+
+test("project read routes return members, bug listings, bug details, stats, and workload", async () => {
+    const { projectId, leadToken, memberToken, memberId } = await createProjectTeam();
+
+    const { bugId: openBugId } = await createApprovedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        bugBody: {
+            title: "Open bug route coverage",
+            description: "Open bug should appear in list and stats.",
+            bugType: "API",
+            environment: "PRODUCTION"
+        }
+    });
+
+    const { bugId: resolvedBugId } = await createResolvedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        assigneeId: memberId,
+        assigneeToken: memberToken,
+        bugBody: {
+            title: "Resolved bug route coverage",
+            description: "Resolved bug should expose accepted fix details.",
+            bugType: "BACKEND",
+            environment: "STAGING"
+        }
+    });
+
+    const { bugId: assignedBugId } = await createAssignedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        assigneeId: memberId,
+        bugBody: {
+            title: "Assigned bug route coverage",
+            description: "Assigned bug should show up in workload.",
+            bugType: "UI",
+            environment: "DEVELOPMENT"
+        }
+    });
+
+    const rejectedFixSubmission = await submitFixRequest({
+        projectId,
+        bugId: assignedBugId,
+        token: memberToken,
+        body: {
+            summary: "Try an unsafe fix first",
+            commitUrl: "https://github.com/example/repo/commit/rejected-fix"
+        }
+    });
+
+    assert.equal(rejectedFixSubmission.status, 201);
+
+    const rejectedFixResponse = await rejectBugFixRequest({
+        projectId,
+        bugId: assignedBugId,
+        fixId: rejectedFixSubmission.body.data.fix._id,
+        token: leadToken,
+        reason: "Needs another pass"
+    });
+
+    assert.equal(rejectedFixResponse.status, 200);
+
+    const membersResponse = await getProjectMembersRequest({
+        projectId,
+        token: leadToken
+    });
+
+    assert.equal(membersResponse.status, 200);
+    assert.equal(membersResponse.body.success, true);
+    assert.equal(membersResponse.body.data.members.length, 2);
+    assert.equal(membersResponse.body.data.lead.email.includes("@example.com"), true);
+
+    const bugsResponse = await getProjectBugsRequest({
+        projectId,
+        token: leadToken
+    });
+
+    assert.equal(bugsResponse.status, 200);
+    assert.equal(bugsResponse.body.success, true);
+    assert.equal(bugsResponse.body.data.bugs.length, 3);
+    assert.equal(bugsResponse.body.data.pagination.total, 3);
+
+    const assignedFilterResponse = await getProjectBugsRequest({
+        projectId,
+        token: leadToken,
+        query: "?status=ASSIGNED"
+    });
+
+    assert.equal(assignedFilterResponse.status, 200);
+    assert.equal(assignedFilterResponse.body.data.bugs.length, 1);
+    assert.equal(assignedFilterResponse.body.data.bugs[0]._id, assignedBugId);
+
+    const bugInfoResponse = await getBugInfoRequest({
+        projectId,
+        bugId: resolvedBugId,
+        token: leadToken
+    });
+
+    assert.equal(bugInfoResponse.status, 200);
+    assert.equal(bugInfoResponse.body.success, true);
+    assert.equal(bugInfoResponse.body.data._id, resolvedBugId);
+    assert.equal(Array.isArray(bugInfoResponse.body.data.fixes), true);
+    assert.equal(bugInfoResponse.body.data.fixes.length, 1);
+    assert.equal(bugInfoResponse.body.data.createdBy.email.includes("@example.com"), true);
+    assert.equal(bugInfoResponse.body.data.assignedTo.email.includes("@example.com"), true);
+
+    const statsResponse = await getProjectStatsRequest({
+        projectId,
+        token: leadToken
+    });
+
+    assert.equal(statsResponse.status, 200);
+    assert.equal(statsResponse.body.success, true);
+    assert.deepEqual(statsResponse.body.data.bugs, {
+        total: 3,
+        open: 1,
+        assigned: 1,
+        awaitingVerification: 0,
+        resolved: 1,
+        rejected: 0,
+        reviewRequested: 0
+    });
+    assert.deepEqual(statsResponse.body.data.fixes, {
+        total: 2,
+        pending: 0,
+        accepted: 1,
+        rejected: 1
+    });
+
+    const workloadResponse = await getDeveloperWorkloadRequest({
+        projectId,
+        token: leadToken
+    });
+
+    assert.equal(workloadResponse.status, 200);
+    assert.equal(workloadResponse.body.success, true);
+    assert.equal(workloadResponse.body.data.length, 1);
+    assert.equal(workloadResponse.body.data[0].developer._id, memberId);
+    assert.equal(workloadResponse.body.data[0].assignedBugs, 1);
+
+    assert.notEqual(openBugId, resolvedBugId);
+});
+
+test("dashboard routes aggregate project, bug, and fix stats correctly", async () => {
+    const { projectId, leadToken, memberToken, memberId } = await createProjectTeam();
+
+    await createApprovedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        bugBody: {
+            title: "Reported open bug",
+            description: "Stays open after approval.",
+            bugType: "API",
+            environment: "PRODUCTION"
+        }
+    });
+
+    await createResolvedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        assigneeId: memberId,
+        assigneeToken: memberToken,
+        bugBody: {
+            title: "Resolved dashboard bug",
+            description: "Produces one accepted fix.",
+            bugType: "BACKEND",
+            environment: "STAGING"
+        }
+    });
+
+    const { bugId: assignedBugId } = await createAssignedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        assigneeId: memberId,
+        bugBody: {
+            title: "Assigned dashboard bug",
+            description: "Will keep one active assignment after fix rejection.",
+            bugType: "UI",
+            environment: "DEVELOPMENT"
+        }
+    });
+
+    const rejectedFixSubmission = await submitFixRequest({
+        projectId,
+        bugId: assignedBugId,
+        token: memberToken,
+        body: {
+            summary: "Initial rejected fix",
+            commitUrl: "https://github.com/example/repo/commit/dashboard-rejected-fix"
+        }
+    });
+
+    assert.equal(rejectedFixSubmission.status, 201);
+
+    const rejectedFixResponse = await rejectBugFixRequest({
+        projectId,
+        bugId: assignedBugId,
+        fixId: rejectedFixSubmission.body.data.fix._id,
+        token: leadToken,
+        reason: "Not ready yet"
+    });
+
+    assert.equal(rejectedFixResponse.status, 200);
+
+    const myDashboardResponse = await getMyDashboardRequest({
+        token: memberToken
+    });
+
+    assert.equal(myDashboardResponse.status, 200);
+    assert.equal(myDashboardResponse.body.success, true);
+    assert.deepEqual(myDashboardResponse.body.data, {
+        projectsJoined: 1,
+        bugsReported: 3,
+        bugsAssigned: 2,
+        fixesSubmitted: 2,
+        fixesAccepted: 1,
+        fixesRejected: 1,
+        successRate: 50
+    });
+
+    const userDashboardResponse = await getUserDashboardRequest({
+        token: leadToken,
+        userId: memberId
+    });
+
+    assert.equal(userDashboardResponse.status, 200);
+    assert.equal(userDashboardResponse.body.success, true);
+    assert.equal(userDashboardResponse.body.data.user._id, memberId);
+    assert.deepEqual(userDashboardResponse.body.data.stats, {
+        projects: 1,
+        bugsReported: 3,
+        bugsResolved: 1,
+        successRate: 50
+    });
+});
+
+test("leaveProject removes the member and cleans up assigned work and pending fixes", async () => {
+    const { projectId, leadToken, memberToken, memberId } = await createProjectTeam();
+
+    const { bugId } = await createAssignedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        assigneeId: memberId,
+        bugBody: {
+            title: "Leave project cleanup bug",
+            description: "Assigned bug should reopen when the member leaves.",
+            bugType: "BACKEND",
+            environment: "PRODUCTION"
+        }
+    });
+
+    const submitResponse = await submitFixRequest({
+        projectId,
+        bugId,
+        token: memberToken,
+        body: {
+            summary: "Pending fix before leaving",
+            commitUrl: "https://github.com/example/repo/commit/leave-project-fix"
+        }
+    });
+
+    assert.equal(submitResponse.status, 201);
+
+    const fixId = submitResponse.body.data.fix._id;
+
+    const leaveResponse = await leaveProjectRequest({
+        projectId,
+        token: memberToken
+    });
+
+    assert.equal(leaveResponse.status, 200);
+    assert.equal(leaveResponse.body.success, true);
+    assert.equal(leaveResponse.body.message, "You left the project successfully");
+
+    const membersResponse = await getProjectMembersRequest({
+        projectId,
+        token: leadToken
+    });
+
+    assert.equal(membersResponse.status, 200);
+    assert.equal(membersResponse.body.data.members.length, 1);
+
+    const projectDoc = await Project.findById(projectId);
+    assert.equal(projectDoc.isMember(memberId), false);
+
+    const bugDoc = await Bug.findById(bugId);
+    const fixDoc = await BugFix.findById(fixId);
+
+    assert.equal(bugDoc.status, "OPEN");
+    assert.equal(bugDoc.assignedTo, null);
+    assert.equal(fixDoc.status, "REJECTED");
+    assert.equal(fixDoc.rejectionReason, "Developer left the project");
+
+    const blockedMembersResponse = await getProjectMembersRequest({
+        projectId,
+        token: memberToken
+    });
+
+    assert.equal(blockedMembersResponse.status, 403);
+});
+
+test("removeMember removes the target member and cancels their pending review state", async () => {
+    const { projectId, leadToken, memberToken, memberId } = await createProjectTeam();
+
+    const pendingReviewCreateResponse = await createBugRequest({
+        projectId,
+        token: memberToken,
+        body: {
+            title: "Pending review bug from removable member",
+            description: "Should be rejected when the member is removed.",
+            bugType: "API",
+            environment: "STAGING"
+        }
+    });
+
+    assert.equal(pendingReviewCreateResponse.status, 201);
+    const pendingReviewBugId = pendingReviewCreateResponse.body.data._id;
+
+    const { bugId: reviewBugId } = await createApprovedBug({
+        projectId,
+        reporterToken: memberToken,
+        leadToken,
+        bugBody: {
+            title: "Review request from removable member",
+            description: "Pending review should be cancelled when member is removed.",
+            bugType: "BACKEND",
+            environment: "PRODUCTION"
+        }
+    });
+
+    const requestReviewResponse = await requestSeverityReview({
+        projectId,
+        bugId: reviewBugId,
+        token: memberToken,
+        body: {
+            reason: "Please review severity before I am removed",
+            proposedSeverity: "HIGH"
+        }
+    });
+
+    assert.equal(requestReviewResponse.status, 200);
+
+    const removeResponse = await removeMemberRequest({
+        projectId,
+        token: leadToken,
+        userId: memberId
+    });
+
+    assert.equal(removeResponse.status, 200);
+    assert.equal(removeResponse.body.success, true);
+    assert.equal(removeResponse.body.message, "Member removed successfully");
+
+    const projectDoc = await Project.findById(projectId);
+    assert.equal(projectDoc.isMember(memberId), false);
+
+    const pendingReviewBug = await Bug.findById(pendingReviewBugId);
+    assert.equal(pendingReviewBug.status, "REJECTED");
+    assert.equal(pendingReviewBug.isActive, false);
+
+    const reviewBug = await Bug.findById(reviewBugId);
+    assert.equal(reviewBug.status, "OPEN");
+    assert.equal(reviewBug.reviewRequests.at(-1).status, "CANCELLED");
+
+    const blockedMembersResponse = await getProjectMembersRequest({
+        projectId,
+        token: memberToken
+    });
+
+    assert.equal(blockedMembersResponse.status, 403);
 });

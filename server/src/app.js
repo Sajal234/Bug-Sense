@@ -22,8 +22,8 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 app.use(cookieParser());
 
-app.use(mongoSanitize()); // Prevent NoSQL injection
-app.use(xss()); // Prevent XSS
+// app.use(mongoSanitize()); // Prevent NoSQL injection
+// app.use(xss()); // Prevent XSS
 
 
 

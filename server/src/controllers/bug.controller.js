@@ -859,8 +859,8 @@ export const approveSeverityReview = asyncHandler( async(req, res) => {
     const normalizedNewSeverity = newSeverity.trim().toUpperCase();
 
     if (!Object.values(BUG_SEVERITY).includes(normalizedNewSeverity)) {
-    throw new ApiError(400, "Invalid severity value");
-}
+        throw new ApiError(400, "Invalid severity value");
+    }
 
 
     const project = await getProjectByIdOrThrow(projectId);

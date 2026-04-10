@@ -153,32 +153,37 @@ const loginUser = asyncHandler( async(req, res) => {
 
 });
 
-const logoutUser = asyncHandler( async(req, res) => {
-    await User.findByIdAndUpdate(
-        req.user._id, 
-        {
-            $set: {
-                refreshToken: undefined
-            },
-        },
-        {
-            new: true
+const logoutUser = asyncHandler(async (req, res) => {
+    const incomingRefreshToken = req.cookies.refreshToken;
+
+    if (incomingRefreshToken) {
+        const parsedToken = parseRefreshSessionToken(incomingRefreshToken);
+
+        if (parsedToken) {
+            await Session.findByIdAndUpdate(
+                parsedToken.sessionId,
+                {
+                    $set: {
+                        revokedAt: new Date(),
+                    },
+                },
+                {
+                    new: true,
+                }
+            );
         }
-    )
-    const options = {
-        httpOnly : true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax"
     }
+
     return res.status(200)
-    .clearCookie("refreshToken", options)
+    .clearCookie("refreshToken", refreshCookieOptions)
     .json(
         new ApiResponse(
             {},
             "User logged out successfully"
         )
     );
-})
+});
+
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken;
@@ -262,23 +267,25 @@ const changePassword = asyncHandler( async(req, res) => {
     }
 
     user.passwordHash = newPassword;
-    user.refreshToken = undefined;
     await user.save({ validateBeforeSave: false });
 
-    const options = {
-        httpOnly : true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax"
-    };
+    await Session.updateMany(
+        { user: user._id, revokedAt: null },
+        {
+            $set: {
+                revokedAt: new Date(),
+            },
+        }
+    );
 
     return res.status(200)
-    .clearCookie("refreshToken", options)
+    .clearCookie("refreshToken", refreshCookieOptions)
     .json(
         new ApiResponse(
-        {},
-        "Password changed successfully. Please log in again."
-    )
-);
+            {},
+            "Password changed successfully. Please log in again."
+        )
+    );
 })
 
 export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword };

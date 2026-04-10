@@ -93,7 +93,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // removing important data from response
     const createdUser = await User.findById(user._id).select(
-        "-passwordHash -refreshToken"
+        "-passwordHash"
     )
 
 
@@ -137,7 +137,7 @@ const loginUser = asyncHandler( async(req, res) => {
     const { refreshToken } = await createSessionForUser(user._id, req);
 
     const loggedInuser = await User.findById(user._id)
-    .select("-passwordHash -refreshToken");
+    .select("-passwordHash");
 
     return res.status(200)
     .cookie("refreshToken", refreshToken, refreshCookieOptions)

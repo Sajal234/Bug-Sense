@@ -103,21 +103,6 @@ const registerUser = asyncHandler( async (req, res) => {
     )
 });
 
-const generateAccessAndRefreshToken = async(user) => {
-    try {
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
-
-        user.refreshToken = hashToken(refreshToken);
-        await user.save({validateBeforeSave: false});
-
-        return {accessToken, refreshToken};
-
-    } catch (error) {
-        throw new ApiError(500, "Error while generating access and refresh token");
-    }
-}
-
 const loginUser = asyncHandler( async(req, res) => {
 
     // destructuring data from the req
@@ -148,18 +133,14 @@ const loginUser = asyncHandler( async(req, res) => {
         throw new ApiError(401, "Invalid email or password");
     }
 
-    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user);
+    const accessToken = user.generateAccessToken();
+    const { refreshToken } = await createSessionForUser(user._id, req);
+
     const loggedInuser = await User.findById(user._id)
     .select("-passwordHash -refreshToken");
 
-    const options = {
-        httpOnly : true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax"
-    }
-
     return res.status(200)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("refreshToken", refreshToken, refreshCookieOptions)
     .json(
         new ApiResponse(
             {
@@ -168,7 +149,7 @@ const loginUser = asyncHandler( async(req, res) => {
             },
             "User logged in successfully"
         )
-    )
+    );
 
 });
 

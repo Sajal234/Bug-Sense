@@ -28,10 +28,6 @@ const userSchema = new Schema(
             type : String,
             required : [true, "Password is required"],
             select : false,
-        },
-        refreshToken : {
-            type : String,
-            select : false,
         }
     }, 
     {
@@ -67,19 +63,6 @@ userSchema.methods.generateAccessToken = function(){
         process.env.ACCESS_TOKEN_SECRET,
         {
             expiresIn : process.env.ACCESS_TOKEN_EXPIRY || "15m"
-        }
-    )
-}
-
-// generate refresh token
-userSchema.methods.generateRefreshToken = function(){
-    return jwt.sign(
-        {
-            userId : this._id,
-        },
-        process.env.REFRESH_TOKEN_SECRET,
-        {
-            expiresIn : process.env.REFRESH_TOKEN_EXPIRY || "7d"
         }
     )
 }

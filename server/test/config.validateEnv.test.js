@@ -8,7 +8,6 @@ const baseEnv = {
     NODE_ENV: "development",
     MONGODB_URI: "mongodb://localhost:27017/bug-sense",
     ACCESS_TOKEN_SECRET: "access-secret",
-    REFRESH_TOKEN_SECRET: "refresh-secret",
     ACCESS_TOKEN_EXPIRY: "15m",
     REFRESH_TOKEN_EXPIRY: "7d",
     CORS_ORIGIN: "http://localhost:5173"

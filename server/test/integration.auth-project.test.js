@@ -16,7 +16,6 @@ const setupEnv = () => {
     process.env.NODE_ENV = "test";
     process.env.CORS_ORIGIN = "http://localhost:5173";
     process.env.ACCESS_TOKEN_SECRET = "test-access-secret";
-    process.env.REFRESH_TOKEN_SECRET = "test-refresh-secret";
     process.env.ACCESS_TOKEN_EXPIRY = "15m";
     process.env.REFRESH_TOKEN_EXPIRY = "7d";
 };
@@ -65,11 +64,11 @@ const createProject = async ({ token, name, description }) => {
         .send({ name, description });
 };
 
-const addMemberToProject = async ({ projectId, token, userId, role }) => {
+const addMemberToProject = async ({ projectId, token, email, role }) => {
     return request(app)
         .patch(`/api/v1/projects/${projectId}/add-member`)
         .set("Authorization", `Bearer ${token}`)
-        .send({ userId, role });
+        .send({ email, role });
 };
 
 const createBugRequest = async ({ projectId, token, body }) => {
@@ -268,7 +267,7 @@ const createProjectTeam = async () => {
     const addMemberResponse = await addMemberToProject({
         projectId: project._id.toString(),
         token: leadToken,
-        userId: memberUser._id.toString(),
+        email: memberEmail,
         role: "BACKEND"
     });
 

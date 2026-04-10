@@ -180,48 +180,62 @@ const logoutUser = asyncHandler( async(req, res) => {
     );
 })
 
-const refreshAccessToken = asyncHandler( async(req, res) => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken;
 
-    if(!incomingRefreshToken){
+    if (!incomingRefreshToken) {
         throw new ApiError(401, "Unauthorized request");
     }
 
-    try {
-        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const parsedToken = parseRefreshSessionToken(incomingRefreshToken);
 
-        const user = await User.findById(decodedToken.userId).select("+refreshToken");
-
-        if(!user){
-            throw new ApiError(401, "Invalid refresh token");
-        }
-
-        if(hashToken(incomingRefreshToken) !== user?.refreshToken){
-            throw new ApiError(401, "Refresh token is expired or used");
-        }
-
-        const options = {
-            httpOnly : true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax"
-        }
-
-        const { accessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshToken(user);
-        
-        return res.status(200)
-        .cookie("refreshToken", newRefreshToken, options)
-        .json(
-            new ApiResponse(
-                {
-                    accessToken,
-                },
-                "Access token refreshed"
-            )
-        )
-    } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid refresh token");
+    if (!parsedToken) {
+        throw new ApiError(401, "Invalid refresh token");
     }
-})
+
+    const { sessionId, secret } = parsedToken;
+
+    const session = await Session.findById(sessionId).select("+tokenHash");
+
+    if (!session) {
+        throw new ApiError(401, "Invalid refresh token");
+    }
+
+    if (session.revokedAt) {
+        throw new ApiError(401, "Refresh session has been revoked");
+    }
+
+    if (session.expiresAt.getTime() <= Date.now()) {
+        throw new ApiError(401, "Refresh session has expired");
+    }
+
+    if (hashSessionSecret(secret) !== session.tokenHash) {
+        throw new ApiError(401, "Invalid refresh token");
+    }
+
+    const user = await User.findById(session.user);
+
+    if (!user) {
+        throw new ApiError(401, "Invalid refresh token");
+    }
+
+    session.lastUsedAt = new Date();
+    const { userAgent, ipAddress } = getRequestMetadata(req);
+    session.userAgent = userAgent;
+    session.ipAddress = ipAddress;
+    await session.save({ validateBeforeSave: false });
+
+    const accessToken = user.generateAccessToken();
+
+    return res.status(200).json(
+        new ApiResponse(
+            {
+                accessToken,
+            },
+            "Access token refreshed"
+        )
+    );
+});
 
 const changePassword = asyncHandler( async(req, res) => {
     const { oldPassword, newPassword } = req.body;

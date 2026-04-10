@@ -3,7 +3,6 @@ const requiredEnvVars = [
     "NODE_ENV",
     "MONGODB_URI",
     "ACCESS_TOKEN_SECRET",
-    "REFRESH_TOKEN_SECRET",
     "ACCESS_TOKEN_EXPIRY",
     "REFRESH_TOKEN_EXPIRY",
     "CORS_ORIGIN"

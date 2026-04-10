@@ -1,5 +1,6 @@
-import mongoose, { mongo } from "mongoose";
-const { Schema } = "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 
 const sessionSchema = new Schema(
     {
@@ -7,12 +8,11 @@ const sessionSchema = new Schema(
             type: Schema.Types.ObjectId,
             ref: "User",
             required: [true, "User is required"],
-            index: true
         },
         tokenHash: {
             type: String,
             required: [true, "Token hash is required"],
-            select: false
+            select: false,
         },
         userAgent: {
             type: String,
@@ -33,18 +33,18 @@ const sessionSchema = new Schema(
         expiresAt: {
             type: Date,
             required: true,
-            index: true,
         },
         revokedAt: {
             type: Date,
             default: null,
-            index: true,
         }
-    }, 
-    {timestamps : true}
-)
+    },
+    {
+        timestamps: true,
+    }
+);
 
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-sessionSchema.index({ user: 1, revokedAt: 1 });
+sessionSchema.index({ user: 1, revokedAt: 1, lastUsedAt: -1 });
 
 export const Session = mongoose.model("Session", sessionSchema);

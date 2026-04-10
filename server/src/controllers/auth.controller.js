@@ -3,10 +3,48 @@ import { User } from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
+import { Session } from "../models/Session.js";
+import {
+    buildRefreshSessionToken,
+    createSessionSecret,
+    getRefreshSessionExpiryDate,
+    hashSessionSecret,
+    parseRefreshSessionToken,
+} from "../utils/sessionTokens.js";
 
 
+const refreshCookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+};
+
+const getRequestMetadata = (req) => {
+    return {
+        userAgent: req.get("user-agent") || "",
+        ipAddress: req.ip || req.socket?.remoteAddress || "",
+    };
+};
+
+const createSessionForUser = async (userId, req) => {
+    const secret = createSessionSecret();
+    const expiresAt = getRefreshSessionExpiryDate();
+    const { userAgent, ipAddress } = getRequestMetadata(req);
+
+    const session = await Session.create({
+        user: userId,
+        tokenHash: hashSessionSecret(secret),
+        userAgent,
+        ipAddress,
+        lastUsedAt: new Date(),
+        expiresAt,
+    });
+
+    return {
+        session,
+        refreshToken: buildRefreshSessionToken(session._id.toString(), secret),
+    };
+};
 
 const registerUser = asyncHandler( async (req, res) => {
 
@@ -64,10 +102,6 @@ const registerUser = asyncHandler( async (req, res) => {
         new ApiResponse(createdUser, "User registered successfully")
     )
 });
-
-const hashToken = (token) => {
-    return crypto.createHash("sha256").update(token).digest("hex");
-};
 
 const generateAccessAndRefreshToken = async(user) => {
     try {

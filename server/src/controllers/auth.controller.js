@@ -160,17 +160,12 @@ const logoutUser = asyncHandler(async (req, res) => {
         const parsedToken = parseRefreshSessionToken(incomingRefreshToken);
 
         if (parsedToken) {
-            await Session.findByIdAndUpdate(
-                parsedToken.sessionId,
-                {
-                    $set: {
-                        revokedAt: new Date(),
-                    },
-                },
-                {
-                    new: true,
-                }
-            );
+            const session = await Session.findById(parsedToken.sessionId);
+
+            if (session && session.user.toString() === req.user._id.toString()) {
+                session.revokedAt = new Date();
+                await session.save({ validateBeforeSave: false });
+            }
         }
     }
 

@@ -13,7 +13,14 @@ const generalLimiter = rateLimit({
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 50, // 50 requests per window
-    message: "Too many attempts, please try again later"
+    message: "Too many attempts, please try again later",
+    skipSuccessfulRequests: true
+});
+
+const refreshLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    message: "Too many session refresh requests, please try again shortly"
 });
 
 const router = Router();
@@ -24,7 +31,7 @@ router.route("/login").post(authLimiter, loginUser);
 
 router.route("/logout").post(verifyJWT, logoutUser);
 
-router.route("/refresh-token").post(authLimiter, refreshAccessToken);
+router.route("/refresh-token").post(refreshLimiter, refreshAccessToken);
 
 router.route("/change-password").post(verifyJWT, changePassword);
 

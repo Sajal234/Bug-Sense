@@ -124,19 +124,27 @@ test("loginUser creates a refresh session cookie and returns the access token", 
 });
 
 test("logoutUser revokes the current session and clears the refresh cookie", async () => {
-    const originalFindByIdAndUpdate = Session.findByIdAndUpdate;
+    const originalSessionFindById = Session.findById;
 
-    let revokedSessionId;
-    let revokedPayload;
+    let savedRevokedAt = null;
+    const fakeSession = {
+        _id: "507f191e810c19729de860ff",
+        user: { toString: () => "507f191e810c19729de860ea" },
+        revokedAt: null,
+        save: async () => {
+            savedRevokedAt = fakeSession.revokedAt;
+            return fakeSession;
+        }
+    };
 
     try {
-        Session.findByIdAndUpdate = async (sessionId, update) => {
-            revokedSessionId = sessionId;
-            revokedPayload = update;
-            return { _id: sessionId };
+        Session.findById = async (sessionId) => {
+            assert.equal(sessionId, "507f191e810c19729de860ff");
+            return fakeSession;
         };
 
         const { res, nextError } = await invokeHandler(logoutUser, {
+            user: { _id: "507f191e810c19729de860ea" },
             cookies: {
                 refreshToken: "507f191e810c19729de860ff.sessionsecret"
             }
@@ -144,13 +152,12 @@ test("logoutUser revokes the current session and clears the refresh cookie", asy
 
         assert.equal(nextError, undefined);
         assert.equal(res.statusCode, 200);
-        assert.equal(revokedSessionId, "507f191e810c19729de860ff");
-        assert.ok(revokedPayload.$set.revokedAt instanceof Date);
+        assert.ok(savedRevokedAt instanceof Date);
         assert.equal(res.clearedCookies.length, 1);
         assert.equal(res.clearedCookies[0].name, "refreshToken");
         assert.equal(res.body?.message, "User logged out successfully");
     } finally {
-        Session.findByIdAndUpdate = originalFindByIdAndUpdate;
+        Session.findById = originalSessionFindById;
     }
 });
 

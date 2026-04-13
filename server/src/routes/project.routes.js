@@ -33,6 +33,12 @@ const generalLimiter = rateLimit({
     message: "Too many attempts, please try again later"
 });
 
+const readLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 800,
+    skipSuccessfulRequests: true,
+    message: "Too many attempts, please try again later"
+});
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -52,7 +58,7 @@ router.route("/:projectId/add-member").patch(verifyJWT, addMember);
 
 router.route("/:projectId/bugs")
 .post(generalLimiter, verifyJWT, createBug)
-.get(verifyJWT, getProjectBugs);
+.get(readLimiter, verifyJWT, getProjectBugs);
 
 router.route("/:projectId/bugs/:bugId/approve")
 .patch(generalLimiter, verifyJWT, approveBug);
@@ -61,7 +67,7 @@ router.route("/:projectId/bugs/:bugId/reject")
 .patch(generalLimiter, verifyJWT, rejectBug);
 
 router.route("/:projectId/bugs/:bugId")
-.get(generalLimiter, verifyJWT, getBugInfo);
+.get(readLimiter, verifyJWT, getBugInfo);
 
 router.route("/:projectId/bugs/:bugId/assign")
 .patch(generalLimiter, verifyJWT, assignBug);
@@ -98,14 +104,14 @@ router.route("/:projectId/bugs/:bugId/severity-review/reject")
 
 router.route("/:projectId/bugs/:bugId/comments")
 .post(generalLimiter, verifyJWT, addComment)
-.get(generalLimiter,verifyJWT, getBugComments)
+.get(readLimiter,verifyJWT, getBugComments)
 
 router.route("/:projectId/bugs/:bugId/comments/:commentId")
 .patch(generalLimiter, verifyJWT, editComment)
 .delete(generalLimiter, verifyJWT, deleteComment)
 
 router.route("/:projectId/members")
-.get(generalLimiter, verifyJWT, getProjectMembers)
+.get(readLimiter, verifyJWT, getProjectMembers)
 
 router.route("/:projectId/transfer-lead")
 .patch(generalLimiter, verifyJWT, transferProjectLead)
@@ -114,16 +120,16 @@ router.route("/:projectId/leave")
 .patch(generalLimiter, verifyJWT, leaveProject)
 
 router.route("/:projectId/stats")
-.get(generalLimiter, verifyJWT, getProjectStats)
+.get(readLimiter, verifyJWT, getProjectStats)
 
 router.route("/:projectId/workload")
-.get(generalLimiter, verifyJWT, getDeveloperWorkload)
+.get(readLimiter, verifyJWT, getDeveloperWorkload)
 
 router.route("/:projectId/members/:userId/role")
 .patch(generalLimiter, verifyJWT, changeMemberRole)
 
 router.route("/:projectId/invite-code")
-.get(generalLimiter, verifyJWT, getProjectInviteCode)
+.get(readLimiter, verifyJWT, getProjectInviteCode)
 
 
 export default router;

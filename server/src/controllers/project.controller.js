@@ -673,6 +673,7 @@ export const getProjectStats = asyncHandler(async (req, res) => {
 
     const [
         totalBugs,
+        pendingReview,
         open,
         assigned,
         awaitingVerification,
@@ -685,6 +686,7 @@ export const getProjectStats = asyncHandler(async (req, res) => {
         rejectedFixes
     ] = await Promise.all([
         Bug.countDocuments(baseBugFilter),
+        Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.PENDING_REVIEW }),
         Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.OPEN }),
         Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.ASSIGNED }),
         Bug.countDocuments({ ...baseBugFilter, status: BUG_STATUS.AWAITING_VERIFICATION }),
@@ -703,6 +705,7 @@ export const getProjectStats = asyncHandler(async (req, res) => {
             {
                 bugs: {
                     total: totalBugs,
+                    pendingReview,
                     open,
                     assigned,
                     awaitingVerification,

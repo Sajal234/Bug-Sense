@@ -81,3 +81,39 @@ test("validateEnv rejects invalid SALT_ROUNDS when provided", () => {
         process.env = originalEnv;
     }
 });
+
+test("validateEnv accepts comma-separated CORS origins and cross-site cookie settings", () => {
+    const originalEnv = process.env;
+
+    try {
+        process.env = {
+            ...originalEnv,
+            ...baseEnv,
+            CORS_ORIGIN: "http://localhost:5173,https://app.bugsense.com",
+            COOKIE_SAME_SITE: "none",
+            COOKIE_SECURE: "true"
+        };
+        assert.doesNotThrow(() => validateEnv());
+    } finally {
+        process.env = originalEnv;
+    }
+});
+
+test("validateEnv rejects SameSite=None without secure cookies", () => {
+    const originalEnv = process.env;
+
+    try {
+        process.env = {
+            ...originalEnv,
+            ...baseEnv,
+            COOKIE_SAME_SITE: "none",
+            COOKIE_SECURE: "false"
+        };
+        assert.throws(
+            () => validateEnv(),
+            /COOKIE_SECURE must be true when COOKIE_SAME_SITE is none/
+        );
+    } finally {
+        process.env = originalEnv;
+    }
+});

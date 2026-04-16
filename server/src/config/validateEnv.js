@@ -35,5 +35,42 @@ export const validateEnv = () => {
         throw new Error("SALT_ROUNDS must be a number >= 4");
     }
 
-};
+    if (process.env.COOKIE_SAME_SITE !== undefined) {
+        const normalizedSameSite = process.env.COOKIE_SAME_SITE.trim().toLowerCase();
 
+        if (!["lax", "strict", "none"].includes(normalizedSameSite)) {
+            throw new Error("COOKIE_SAME_SITE must be one of: lax, strict, none");
+        }
+    }
+
+    if (process.env.COOKIE_SECURE !== undefined) {
+        const normalizedCookieSecure = process.env.COOKIE_SECURE.trim().toLowerCase();
+
+        if (!["true", "false"].includes(normalizedCookieSecure)) {
+            throw new Error("COOKIE_SECURE must be either true or false");
+        }
+    }
+
+    const resolvedCookieSecure =
+        process.env.COOKIE_SECURE !== undefined
+            ? process.env.COOKIE_SECURE.trim().toLowerCase() === "true"
+            : process.env.NODE_ENV === "production";
+
+    const resolvedSameSite =
+        process.env.COOKIE_SAME_SITE?.trim().toLowerCase() ||
+        (resolvedCookieSecure ? "none" : "lax");
+
+    if (resolvedSameSite === "none" && !resolvedCookieSecure) {
+        throw new Error("COOKIE_SECURE must be true when COOKIE_SAME_SITE is none");
+    }
+
+    const allowedOrigins = process.env.CORS_ORIGIN
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+
+    if (allowedOrigins.length === 0) {
+        throw new Error("CORS_ORIGIN must include at least one origin");
+    }
+
+};

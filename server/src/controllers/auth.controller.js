@@ -13,10 +13,21 @@ import {
 } from "../utils/sessionTokens.js";
 
 
-const refreshCookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+const getRefreshCookieOptions = () => {
+    const secure =
+        process.env.COOKIE_SECURE !== undefined
+            ? process.env.COOKIE_SECURE.trim().toLowerCase() === "true"
+            : process.env.NODE_ENV === "production";
+
+    const sameSite =
+        process.env.COOKIE_SAME_SITE?.trim().toLowerCase() ||
+        (secure ? "none" : "lax");
+
+    return {
+        httpOnly: true,
+        secure,
+        sameSite,
+    };
 };
 
 const getRequestMetadata = (req) => {
@@ -156,7 +167,7 @@ const loginUser = asyncHandler( async(req, res) => {
     .select("-passwordHash");
 
     return res.status(200)
-    .cookie("refreshToken", refreshToken, refreshCookieOptions)
+    .cookie("refreshToken", refreshToken, getRefreshCookieOptions())
     .json(
         new ApiResponse(
             {
@@ -186,7 +197,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     }
 
     return res.status(200)
-    .clearCookie("refreshToken", refreshCookieOptions)
+    .clearCookie("refreshToken", getRefreshCookieOptions())
     .json(
         new ApiResponse(
             {},
@@ -256,7 +267,7 @@ const revokeSession = asyncHandler(async (req, res) => {
     const response = res.status(200);
 
     if (isCurrentSession) {
-        response.clearCookie("refreshToken", refreshCookieOptions);
+        response.clearCookie("refreshToken", getRefreshCookieOptions());
     }
 
     return response.json(
@@ -398,7 +409,7 @@ const changePassword = asyncHandler( async(req, res) => {
     );
 
     return res.status(200)
-    .clearCookie("refreshToken", refreshCookieOptions)
+    .clearCookie("refreshToken", getRefreshCookieOptions())
     .json(
         new ApiResponse(
             {},

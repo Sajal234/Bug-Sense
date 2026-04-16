@@ -101,7 +101,7 @@ test("joinProject rejects users who are already members", async () => {
 test("addMember adds a normalized role for a valid user", async () => {
     const originalProjectFindById = Project.findById;
     const originalFindOneAndUpdate = Project.findOneAndUpdate;
-    const originalUserFindById = User.findById;
+    const originalUserFindOne = User.findOne;
 
     const project = {
         _id: validProjectId,
@@ -120,13 +120,17 @@ test("addMember adds a normalized role for a valid user", async () => {
             receivedOptions = options;
             return project;
         };
-        User.findById = async () => ({ _id: validMemberId, name: "Member" });
+        User.findOne = async () => ({
+            _id: validMemberId,
+            name: "Member",
+            email: "member@example.com"
+        });
 
         const { res, nextError } = await invokeHandler(addMember, {
             params: { projectId: validProjectId },
             user: { _id: validLeadId },
             body: {
-                userId: validMemberId,
+                email: " member@example.com ",
                 role: " frontend "
             }
         });
@@ -154,7 +158,7 @@ test("addMember adds a normalized role for a valid user", async () => {
     } finally {
         Project.findById = originalProjectFindById;
         Project.findOneAndUpdate = originalFindOneAndUpdate;
-        User.findById = originalUserFindById;
+        User.findOne = originalUserFindOne;
     }
 });
 

@@ -1,6 +1,15 @@
 
 import { Router } from "express";
-import { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword } from "../controllers/auth.controller.js";
+import {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changePassword,
+    listUserSessions,
+    revokeSession,
+    revokeOtherSessions,
+} from "../controllers/auth.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { getMyDashboard, getUserDashboard } from "../controllers/user.controller.js";
 import rateLimit from 'express-rate-limit';
@@ -34,6 +43,9 @@ router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/refresh-token").post(refreshLimiter, refreshAccessToken);
 
 router.route("/change-password").post(verifyJWT, changePassword);
+router.route("/sessions").get(generalLimiter, verifyJWT, listUserSessions);
+router.route("/sessions/others").delete(verifyJWT, revokeOtherSessions);
+router.route("/sessions/:sessionId").delete(verifyJWT, revokeSession);
 
 
 // Dashboards

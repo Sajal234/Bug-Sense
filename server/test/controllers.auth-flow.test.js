@@ -7,7 +7,10 @@ import {
     loginUser,
     logoutUser,
     refreshAccessToken,
-    changePassword
+    changePassword,
+    listUserSessions,
+    revokeSession,
+    revokeOtherSessions
 } from "../src/controllers/auth.controller.js";
 import { User } from "../src/models/User.js";
 import { Session } from "../src/models/Session.js";
@@ -298,6 +301,131 @@ test("changePassword revokes all active sessions and clears the refresh cookie",
         );
     } finally {
         User.findById = originalFindById;
+        Session.updateMany = originalSessionUpdateMany;
+    }
+});
+
+test("listUserSessions returns active sessions with the current session first", async () => {
+    const originalSessionFind = Session.find;
+
+    const sessions = [
+        {
+            _id: { toString: () => "507f191e810c19729de860aa" },
+            userAgent: "Firefox",
+            ipAddress: "10.0.0.2",
+            lastUsedAt: new Date("2026-04-16T10:00:00.000Z"),
+            createdAt: new Date("2026-04-15T10:00:00.000Z"),
+            expiresAt: new Date("2026-04-23T10:00:00.000Z"),
+            revokedAt: null
+        },
+        {
+            _id: { toString: () => "507f191e810c19729de860ff" },
+            userAgent: "Chrome",
+            ipAddress: "10.0.0.1",
+            lastUsedAt: new Date("2026-04-16T09:00:00.000Z"),
+            createdAt: new Date("2026-04-14T10:00:00.000Z"),
+            expiresAt: new Date("2026-04-23T09:00:00.000Z"),
+            revokedAt: null
+        }
+    ];
+
+    try {
+        Session.find = (filter) => {
+            assert.equal(filter.user, "507f191e810c19729de860ea");
+            assert.equal(filter.revokedAt, null);
+            return {
+                select() {
+                    return {
+                        sort: async () => sessions
+                    };
+                }
+            };
+        };
+
+        const { res, nextError } = await invokeHandler(listUserSessions, {
+            user: { _id: "507f191e810c19729de860ea" },
+            cookies: {
+                refreshToken: "507f191e810c19729de860ff.secret"
+            }
+        });
+
+        assert.equal(nextError, undefined);
+        assert.equal(res.statusCode, 200);
+        assert.equal(res.body?.data?.length, 2);
+        assert.equal(res.body?.data?.[0]?._id, "507f191e810c19729de860ff");
+        assert.equal(res.body?.data?.[0]?.isCurrent, true);
+        assert.equal(res.body?.data?.[1]?.isCurrent, false);
+    } finally {
+        Session.find = originalSessionFind;
+    }
+});
+
+test("revokeSession signs out the current session and clears the cookie", async () => {
+    const originalSessionFindOne = Session.findOne;
+
+    let savedRevokedAt = null;
+    const fakeSession = {
+        _id: { toString: () => "507f191e810c19729de860ff" },
+        revokedAt: null,
+        save: async () => {
+            savedRevokedAt = fakeSession.revokedAt;
+            return fakeSession;
+        }
+    };
+
+    try {
+        Session.findOne = async (filter) => {
+            assert.equal(filter._id, "507f191e810c19729de860ff");
+            assert.equal(filter.user, "507f191e810c19729de860ea");
+            return fakeSession;
+        };
+
+        const { res, nextError } = await invokeHandler(revokeSession, {
+            params: { sessionId: "507f191e810c19729de860ff" },
+            user: { _id: "507f191e810c19729de860ea" },
+            cookies: {
+                refreshToken: "507f191e810c19729de860ff.secret"
+            }
+        });
+
+        assert.equal(nextError, undefined);
+        assert.equal(res.statusCode, 200);
+        assert.ok(savedRevokedAt instanceof Date);
+        assert.equal(res.clearedCookies.length, 1);
+        assert.equal(res.body?.data?.currentSessionRevoked, true);
+    } finally {
+        Session.findOne = originalSessionFindOne;
+    }
+});
+
+test("revokeOtherSessions revokes every other active session", async () => {
+    const originalSessionUpdateMany = Session.updateMany;
+
+    let updateFilter;
+    let updatePayload;
+
+    try {
+        Session.updateMany = async (filter, update) => {
+            updateFilter = filter;
+            updatePayload = update;
+            return { modifiedCount: 3 };
+        };
+
+        const { res, nextError } = await invokeHandler(revokeOtherSessions, {
+            user: { _id: "507f191e810c19729de860ea" },
+            cookies: {
+                refreshToken: "507f191e810c19729de860ff.secret"
+            }
+        });
+
+        assert.equal(nextError, undefined);
+        assert.equal(res.statusCode, 200);
+        assert.equal(updateFilter.user, "507f191e810c19729de860ea");
+        assert.equal(updateFilter.revokedAt, null);
+        assert.deepEqual(updateFilter._id, { $ne: "507f191e810c19729de860ff" });
+        assert.ok(updatePayload.$set.revokedAt instanceof Date);
+        assert.equal(res.body?.data?.revokedCount, 3);
+    } finally {
         Session.updateMany = originalSessionUpdateMany;
     }
 });

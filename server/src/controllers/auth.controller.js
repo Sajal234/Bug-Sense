@@ -1,4 +1,4 @@
-
+import mongoose from "mongoose";
 import { User } from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js"
@@ -25,6 +25,22 @@ const getRequestMetadata = (req) => {
         ipAddress: req.ip || req.socket?.remoteAddress || "",
     };
 };
+
+const getCurrentSessionId = (req) => {
+    const parsedToken = parseRefreshSessionToken(req.cookies?.refreshToken);
+    return parsedToken?.sessionId || null;
+};
+
+const serializeSession = (session, currentSessionId) => ({
+    _id: session._id.toString(),
+    userAgent: session.userAgent || "",
+    ipAddress: session.ipAddress || "",
+    lastUsedAt: session.lastUsedAt,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    revokedAt: session.revokedAt,
+    isCurrent: currentSessionId === session._id.toString(),
+});
 
 const createSessionForUser = async (userId, req) => {
     const secret = createSessionSecret();
@@ -179,6 +195,114 @@ const logoutUser = asyncHandler(async (req, res) => {
     );
 });
 
+const listUserSessions = asyncHandler(async (req, res) => {
+    const currentSessionId = getCurrentSessionId(req);
+    const now = new Date();
+
+    const sessions = await Session.find({
+        user: req.user._id,
+        revokedAt: null,
+        expiresAt: { $gt: now },
+    })
+        .select("userAgent ipAddress lastUsedAt createdAt expiresAt revokedAt")
+        .sort({ lastUsedAt: -1, createdAt: -1 });
+
+    const serializedSessions = sessions
+        .map((session) => serializeSession(session, currentSessionId))
+        .sort((a, b) => {
+            if (a.isCurrent && !b.isCurrent) {
+                return -1;
+            }
+
+            if (!a.isCurrent && b.isCurrent) {
+                return 1;
+            }
+
+            return new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime();
+        });
+
+    return res.status(200).json(
+        new ApiResponse(
+            serializedSessions,
+            "Sessions fetched successfully"
+        )
+    );
+});
+
+const revokeSession = asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+        throw new ApiError(400, "Invalid session id");
+    }
+
+    const session = await Session.findOne({
+        _id: sessionId,
+        user: req.user._id,
+    });
+
+    if (!session) {
+        throw new ApiError(404, "Session not found");
+    }
+
+    if (!session.revokedAt) {
+        session.revokedAt = new Date();
+        await session.save({ validateBeforeSave: false });
+    }
+
+    const currentSessionId = getCurrentSessionId(req);
+    const isCurrentSession = currentSessionId === session._id.toString();
+
+    const response = res.status(200);
+
+    if (isCurrentSession) {
+        response.clearCookie("refreshToken", refreshCookieOptions);
+    }
+
+    return response.json(
+        new ApiResponse(
+            {
+                revokedSessionId: session._id.toString(),
+                currentSessionRevoked: isCurrentSession,
+            },
+            "Session signed out successfully"
+        )
+    );
+});
+
+const revokeOtherSessions = asyncHandler(async (req, res) => {
+    const currentSessionId = getCurrentSessionId(req);
+    const now = new Date();
+
+    const filter = {
+        user: req.user._id,
+        revokedAt: null,
+        expiresAt: { $gt: now },
+    };
+
+    if (currentSessionId && mongoose.Types.ObjectId.isValid(currentSessionId)) {
+        filter._id = { $ne: currentSessionId };
+    }
+
+    const result = await Session.updateMany(
+        filter,
+        {
+            $set: {
+                revokedAt: now,
+            },
+        }
+    );
+
+    return res.status(200).json(
+        new ApiResponse(
+            {
+                revokedCount: result.modifiedCount ?? 0,
+            },
+            "Other sessions signed out successfully"
+        )
+    );
+});
+
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken;
@@ -283,4 +407,13 @@ const changePassword = asyncHandler( async(req, res) => {
     );
 })
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword };
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changePassword,
+    listUserSessions,
+    revokeSession,
+    revokeOtherSessions,
+};

@@ -1100,6 +1100,7 @@ test("project read routes return members, bug listings, bug details, stats, and 
     assert.equal(statsResponse.body.success, true);
     assert.deepEqual(statsResponse.body.data.bugs, {
         total: 3,
+        pendingReview: 0,
         open: 1,
         assigned: 1,
         awaitingVerification: 0,

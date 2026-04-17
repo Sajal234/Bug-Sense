@@ -8,6 +8,17 @@ const requiredEnvVars = [
     "CORS_ORIGIN"
 ];
 
+const isTrue = (value) => String(value).trim().toLowerCase() === "true";
+
+const ensureValidUrl = (value, key) => {
+    try {
+        new URL(value);
+    } catch {
+        throw new Error(`${key} must be a valid URL`);
+    }
+};
+
+
 export const validateEnv = () => {
     requiredEnvVars.forEach((key) => {
         if (!process.env[key]) {
@@ -24,6 +35,15 @@ export const validateEnv = () => {
     if (Number.isNaN(Number(process.env.PORT)) || Number(process.env.PORT) <= 0) {
         throw new Error("PORT must be a positive number");
     }
+
+    if (process.env.GOOGLE_OAUTH_ENABLED !== undefined) {
+        const normalizedGoogleOauthEnabled = process.env.GOOGLE_OAUTH_ENABLED.trim().toLowerCase();
+
+        if (!["true", "false"].includes(normalizedGoogleOauthEnabled)) {
+            throw new Error("GOOGLE_OAUTH_ENABLED must be either true or false");
+        }
+    }
+
 
     if (
         process.env.SALT_ROUNDS !== undefined &&
@@ -73,4 +93,21 @@ export const validateEnv = () => {
         throw new Error("CORS_ORIGIN must include at least one origin");
     }
 
+    if (isTrue(process.env.GOOGLE_OAUTH_ENABLED)) {
+        const requiredGoogleEnvVars = [
+            "FRONTEND_URL",
+            "GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET",
+            "GOOGLE_REDIRECT_URI"
+        ];
+
+        requiredGoogleEnvVars.forEach((key) => {
+            if (!process.env[key]) {
+                throw new Error(`Missing required environment variable: ${key}`);
+            }
+        });
+
+        ensureValidUrl(process.env.FRONTEND_URL, "FRONTEND_URL");
+        ensureValidUrl(process.env.GOOGLE_REDIRECT_URI, "GOOGLE_REDIRECT_URI");
+    }
 };

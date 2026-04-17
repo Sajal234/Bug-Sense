@@ -235,6 +235,12 @@ const getMyDashboardRequest = async ({ token }) => {
         .set("Authorization", `Bearer ${token}`);
 };
 
+const getCurrentUserRequest = async ({ token }) => {
+    return request(app)
+        .get("/api/v1/users/me")
+        .set("Authorization", `Bearer ${token}`);
+};
+
 const getUserDashboardRequest = async ({ token, userId }) => {
     return request(app)
         .get(`/api/v1/users/${userId}/dashboard`)
@@ -490,6 +496,28 @@ test("change password clears the refresh session and blocks token refresh", asyn
 
     assert.equal(refreshResponse.status, 401);
     assert.equal(refreshResponse.body.message, "Unauthorized request");
+});
+
+test("authenticated users can fetch the current user profile", async () => {
+    const email = uniqueEmail("me-route");
+    const password = "secret123";
+
+    await registerUser({
+        name: "Sajal",
+        email,
+        password
+    });
+
+    const loginResponse = await loginUser({ email, password });
+    const accessToken = loginResponse.body.data.accessToken;
+
+    const currentUserResponse = await getCurrentUserRequest({ token: accessToken });
+
+    assert.equal(currentUserResponse.status, 200);
+    assert.equal(currentUserResponse.body.success, true);
+    assert.equal(currentUserResponse.body.data.email, email);
+    assert.equal(currentUserResponse.body.data.name, "Sajal");
+    assert.equal("passwordHash" in currentUserResponse.body.data, false);
 });
 
 test("authenticated users can create a project and fetch it from my-projects", async () => {

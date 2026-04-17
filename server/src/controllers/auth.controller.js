@@ -12,6 +12,14 @@ import {
     parseRefreshSessionToken,
 } from "../utils/sessionTokens.js";
 
+import {
+    buildGoogleAuthUrl,
+    createOAuthState,
+    exchangeGoogleCode,
+    fetchGoogleProfile,
+    getOAuthStateCookieOptions,
+} from "../utils/oauth.js";
+
 
 const getRefreshCookieOptions = () => {
     const secure =
@@ -28,6 +36,37 @@ const getRefreshCookieOptions = () => {
         secure,
         sameSite,
     };
+};
+
+const isTrue = (value) => String(value).trim().toLowerCase() === "true";
+
+const buildFrontendOAuthRedirect = (status, error = "") => {
+    const url = new URL("/oauth/callback", process.env.FRONTEND_URL);
+
+    url.searchParams.set("status", status);
+    url.searchParams.set("provider", "google");
+
+    if (error) {
+        url.searchParams.set("error", error);
+    }
+
+    return url.toString();
+};
+
+const getSafeOAuthName = (name, email) => {
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+
+    if (normalizedName.length >= 3) {
+        return normalizedName.slice(0, 50);
+    }
+
+    const emailPrefix = typeof email === "string" ? email.split("@")[0].trim() : "";
+
+    if (emailPrefix.length >= 3) {
+        return emailPrefix.slice(0, 50);
+    }
+
+    return "BugSense User";
 };
 
 const getRequestMetadata = (req) => {
@@ -72,6 +111,96 @@ const createSessionForUser = async (userId, req) => {
         refreshToken: buildRefreshSessionToken(session._id.toString(), secret),
     };
 };
+
+const findOrCreateGoogleUser = async ({ googleId, email, name }) => {
+    let user = await User.findOne({ googleId });
+
+    if (user) {
+        return user;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingEmailUser = await User.findOne({ email: normalizedEmail });
+
+    if (existingEmailUser) {
+        throw new ApiError(
+            409,
+            "An account with this email already exists. Sign in with password first."
+        );
+    }
+
+    user = await User.create({
+        name: getSafeOAuthName(name, normalizedEmail),
+        email: normalizedEmail,
+        googleId,
+    });
+
+    return user;
+};
+
+const startGoogleAuth = asyncHandler(async (req, res) => {
+    if (!isTrue(process.env.GOOGLE_OAUTH_ENABLED)) {
+        throw new ApiError(404, "Google OAuth is not enabled");
+    }
+
+    const state = createOAuthState();
+
+    return res
+        .cookie("oauth_state_google", state, getOAuthStateCookieOptions())
+        .redirect(buildGoogleAuthUrl(state));
+});
+
+const handleGoogleCallback = asyncHandler(async (req, res) => {
+    if (!isTrue(process.env.GOOGLE_OAUTH_ENABLED)) {
+        throw new ApiError(404, "Google OAuth is not enabled");
+    }
+
+    const { code, state } = req.query;
+    const storedState = req.cookies?.oauth_state_google;
+
+    if (
+        typeof code !== "string" ||
+        typeof state !== "string" ||
+        !storedState ||
+        state !== storedState
+    ) {
+        res.clearCookie("oauth_state_google", getOAuthStateCookieOptions());
+        return res.redirect(buildFrontendOAuthRedirect("error", "invalid_state"));
+    }
+
+    res.clearCookie("oauth_state_google", getOAuthStateCookieOptions());
+
+    try {
+        const tokenData = await exchangeGoogleCode(code);
+        const profile = await fetchGoogleProfile(tokenData.access_token);
+
+        if (
+            typeof profile?.sub !== "string" ||
+            typeof profile?.email !== "string" ||
+            profile.email_verified !== true
+        ) {
+            return res.redirect(buildFrontendOAuthRedirect("error", "unverified_email"));
+        }
+
+        const user = await findOrCreateGoogleUser({
+            googleId: profile.sub,
+            email: profile.email,
+            name: profile.name,
+        });
+
+        const { refreshToken } = await createSessionForUser(user._id, req);
+
+        return res
+            .cookie("refreshToken", refreshToken, getRefreshCookieOptions())
+            .redirect(buildFrontendOAuthRedirect("success"));
+    } catch (error) {
+        if (error instanceof ApiError && error.statusCode === 409) {
+            return res.redirect(buildFrontendOAuthRedirect("error", "email_exists"));
+        }
+
+        return res.redirect(buildFrontendOAuthRedirect("error", "oauth_failed"));
+    }
+});
 
 const registerUser = asyncHandler( async (req, res) => {
 
@@ -202,6 +331,15 @@ const logoutUser = asyncHandler(async (req, res) => {
         new ApiResponse(
             {},
             "User logged out successfully"
+        )
+    );
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res.status(200).json(
+        new ApiResponse(
+            req.user,
+            "Current user fetched successfully"
         )
     );
 });
@@ -427,4 +565,7 @@ export {
     listUserSessions,
     revokeSession,
     revokeOtherSessions,
+    startGoogleAuth,
+    handleGoogleCallback,
+    getCurrentUser,
 };

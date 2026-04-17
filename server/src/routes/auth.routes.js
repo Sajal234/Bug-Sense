@@ -9,6 +9,9 @@ import {
     listUserSessions,
     revokeSession,
     revokeOtherSessions,
+    startGoogleAuth,
+    handleGoogleCallback,
+    getCurrentUser,
 } from "../controllers/auth.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { getMyDashboard, getUserDashboard } from "../controllers/user.controller.js";
@@ -43,9 +46,12 @@ router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/refresh-token").post(refreshLimiter, refreshAccessToken);
 
 router.route("/change-password").post(verifyJWT, changePassword);
+router.route("/me").get(generalLimiter, verifyJWT, getCurrentUser);
 router.route("/sessions").get(generalLimiter, verifyJWT, listUserSessions);
 router.route("/sessions/others").delete(verifyJWT, revokeOtherSessions);
 router.route("/sessions/:sessionId").delete(verifyJWT, revokeSession);
+router.route("/auth/google").get(generalLimiter, startGoogleAuth);
+router.route("/auth/google/callback").get(generalLimiter, handleGoogleCallback);
 
 
 // Dashboards

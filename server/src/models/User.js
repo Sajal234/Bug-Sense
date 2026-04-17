@@ -26,8 +26,13 @@ const userSchema = new Schema(
         },
         passwordHash : {
             type : String,
-            required : [true, "Password is required"],
             select : false,
+        },
+        googleId : {
+            type : String,
+            unique : true,
+            sparse : true,
+            index : true,
         }
     }, 
     {
@@ -41,7 +46,7 @@ const SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 10;
 userSchema.pre("save", async function(){
 
     // password not modified
-    if(!this.isModified("passwordHash"))
+    if(!this.isModified("passwordHash") || !this.passwordHash)
         return ;
 
 
@@ -50,6 +55,10 @@ userSchema.pre("save", async function(){
 
 // check if password is correct
 userSchema.methods.comparePassword = async function(candidatePassword){
+    if (!this.passwordHash) {
+        return false;
+    }
+
     return await bcrypt.compare(candidatePassword, this.passwordHash);
 } 
 

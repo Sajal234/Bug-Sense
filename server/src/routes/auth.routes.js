@@ -52,6 +52,8 @@ router.route("/sessions/others").delete(verifyJWT, revokeOtherSessions);
 router.route("/sessions/:sessionId").delete(verifyJWT, revokeSession);
 router.route("/auth/google").get(generalLimiter, startGoogleAuth);
 router.route("/auth/google/callback").get(generalLimiter, handleGoogleCallback);
+router.route("/oauth/google").get(generalLimiter, startGoogleAuth);
+router.route("/oauth/google/callback").get(generalLimiter, handleGoogleCallback);
 
 
 // Dashboards

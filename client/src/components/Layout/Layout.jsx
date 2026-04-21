@@ -1,35 +1,64 @@
 import { useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
-import { useTheme } from '../../contexts/ThemeContext';
+import { Outlet, Link, NavLink } from 'react-router-dom';
+import useTheme from '../../hooks/useTheme';
+import useAuth from '../../hooks/useAuth';
+import BrandMark from '../BrandMark';
 
 const Layout = () => {
   const { theme, toggleTheme } = useTheme();
+  const { user, logoutContext } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  const profileInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || 'U';
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const topNavLinkClass = ({ isActive }) =>
+    `text-[14px] font-medium px-3 py-1.5 transition-colors ${
+      isActive
+        ? 'text-gray-900 dark:text-white'
+        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+    }`;
+  const profileButtonClass = ({ isActive }) =>
+    `ml-1 flex h-9 w-9 items-center justify-center rounded-full border text-[13px] font-semibold transition-colors ${
+      isActive
+        ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-[#111111]'
+        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-[#2C2C2C] dark:bg-[#161616] dark:text-[#E2E8F0] dark:hover:border-[#3A3A3A] dark:hover:bg-[#202020]'
+    }`;
   return (
     <div className="flex flex-col min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E] text-[#111827] dark:text-[#E2E8F0] font-sans antialiased">
-      {/* Navbar - Clean, solid borders, professional tracking tool inspired */}
-      <nav className="bg-white dark:bg-[#161616] border-b border-gray-200 dark:border-[#2C2C2C] sticky top-0 z-50 transition-colors duration-200">
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-14">
+      <nav className="sticky top-0 z-50 border-b border-gray-200 bg-[#FAFAFA] transition-colors duration-200 dark:border-[#1F242C] dark:bg-[#0E0E0E]">
+        <div className="mx-auto grid h-14 w-full max-w-screen-2xl grid-cols-[auto_1fr_auto] items-center gap-3 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
             <div className="flex items-center">
               <Link to="/" className="shrink-0 flex items-center gap-2.5 group">
-                {/* Simple geometric logo placeholder, no emojis */}
-                <div className="w-5 h-5 bg-blue-600 rounded-[4px] flex items-center justify-center shadow-inner">
-                  <div className="w-1.5 h-1.5 bg-white rounded-[1px]"></div>
-                </div>
+                <BrandMark size="sm" />
                 <span className="text-[15px] font-semibold tracking-tight text-gray-900 dark:text-white">
                   Bug-Sense
                 </span>
               </Link>
             </div>
+
+            <div className="hidden lg:flex items-center justify-center gap-2">
+              {user ? (
+                <>
+                  <NavLink to="/" className={topNavLinkClass}>
+                    Home
+                  </NavLink>
+                  <NavLink to="/dashboard" className={topNavLinkClass}>
+                    Dashboard
+                  </NavLink>
+                  <NavLink to="/projects" className={topNavLinkClass}>
+                    Projects
+                  </NavLink>
+                  <NavLink to="/guide" className={topNavLinkClass}>
+                    Guide
+                  </NavLink>
+                </>
+              ) : null}
+            </div>
             
-            {/* Desktop Navigation (hides on small screens) */}
-            <div className="hidden sm:flex items-center space-x-1">
-              {/* Theme Toggle Button */}
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center justify-end space-x-1">
               <button 
                 onClick={toggleTheme}
-                className="p-1.5 mr-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-md hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700"
+                className="mr-2 rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#161A20] dark:hover:text-gray-100"
                 aria-label="Toggle dark mode"
               >
                 {theme === 'dark' ? (
@@ -43,34 +72,48 @@ const Layout = () => {
                 )}
               </button>
 
-              <Link 
-                to="/dashboard" 
-                className="text-[14px] font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
-              >
-                Dashboard
-              </Link>
-              <div className="h-4 w-px bg-gray-200 dark:bg-gray-800 mx-2"></div>
-              <Link 
-                to="/login" 
-                className="text-[14px] font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
-              >
-                Log in
-              </Link>
-              <div className="pl-1">
-                <Link 
-                  to="/register" 
-                  className="text-[14px] font-medium text-white bg-gray-900 hover:bg-gray-800 dark:bg-[#EDEDED] dark:text-[#111111] dark:hover:bg-white px-3 py-1.5 rounded-md transition-colors border border-transparent"
-                >
-                  Sign up
-                </Link>
-              </div>
+              {user ? (
+                <>
+                  <NavLink
+                    to="/profile"
+                    className={profileButtonClass}
+                    aria-label="Open profile"
+                    title={user?.name ? `${user.name} profile` : 'Profile'}
+                  >
+                    {profileInitial}
+                  </NavLink>
+                  <button 
+                    onClick={logoutContext}
+                    className="ml-1 rounded-full px-3 py-1.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link 
+                    to="/login" 
+                    className="rounded-full px-3 py-1.5 text-[14px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#262626] dark:hover:text-gray-100"
+                  >
+                    Log in
+                  </Link>
+                  <div className="pl-1">
+                    <Link 
+                      to="/register" 
+                      className="rounded-full border border-transparent bg-blue-600 px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400"
+                    >
+                      Sign up
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Mobile Navigation Controls */}
-            <div className="flex items-center sm:hidden space-x-2">
+            <div className="flex items-center justify-end lg:hidden space-x-2">
               <button 
                 onClick={toggleTheme}
-                className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-md hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors focus:outline-none"
+                className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#161A20] dark:hover:text-gray-100"
                 aria-label="Toggle dark mode"
               >
                 {theme === 'dark' ? (
@@ -87,7 +130,7 @@ const Layout = () => {
               {/* Hamburger Menu Toggle */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-md hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors focus:outline-none"
+                className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#161A20] dark:hover:text-gray-100"
                 aria-label="Toggle mobile menu"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -99,43 +142,178 @@ const Layout = () => {
                 </svg>
               </button>
             </div>
-          </div>
         </div>
-
-        {/* Mobile Dropdown Menu */}
-        {isMobileMenuOpen && (
-          <div className="sm:hidden border-t border-gray-200 dark:border-[#2C2C2C] bg-white dark:bg-[#161616]">
-            <div className="px-4 py-3 space-y-1 shadow-lg border-b border-gray-200 dark:border-[#2C2C2C]">
-              <Link 
-                to="/dashboard" 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block text-[14px] font-medium text-gray-600 dark:text-gray-300 px-3 py-2.5 rounded-md hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
-              >
-                Dashboard
-              </Link>
-              <Link 
-                to="/login" 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block text-[14px] font-medium text-gray-600 dark:text-gray-300 px-3 py-2.5 rounded-md hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
-              >
-                Log in
-              </Link>
-              <Link 
-                to="/register" 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block text-[14px] font-medium text-white bg-gray-900 hover:bg-gray-800 dark:bg-[#EDEDED] dark:text-[#111111] dark:hover:bg-white px-3 py-2.5 rounded-md text-center mt-2 transition-colors"
-              >
-                Sign up
-              </Link>
-            </div>
-          </div>
-        )}
       </nav>
 
+      {/* Mobile Slide-Over Menu */}
+      <div
+        className={`fixed inset-0 z-40 lg:hidden transition ${isMobileMenuOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        aria-hidden={!isMobileMenuOpen}
+      >
+        <button
+          type="button"
+          aria-label="Close mobile menu overlay"
+          onClick={closeMobileMenu}
+          className={`absolute inset-0 bg-black/45 transition-opacity duration-200 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
+        />
+
+        <aside
+          className={`absolute right-0 top-0 h-full w-[min(21rem,92vw)] border-l border-gray-200 bg-white shadow-2xl transition-transform duration-300 dark:border-[#2C2C2C] dark:bg-[#161616] ${
+            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 dark:border-[#2C2C2C]">
+              <div className="flex items-center gap-3">
+                {user ? (
+                  <>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-sm font-semibold text-gray-700 dark:border-[#2C2C2C] dark:bg-[#111111] dark:text-[#E2E8F0]">
+                      {profileInitial}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{user.name}</p>
+                      <p className="text-[12px] text-gray-500 dark:text-[#8A8A8A]">Workspace menu</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <BrandMark size="sm" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Bug-Sense</p>
+                      <p className="text-[12px] text-gray-500 dark:text-[#8A8A8A]">Navigation</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={closeMobileMenu}
+                className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#202020] dark:hover:text-white"
+                aria-label="Close mobile menu"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-4">
+              {user ? (
+                <div className="space-y-1">
+                  <NavLink
+                    to="/"
+                    onClick={closeMobileMenu}
+                    className={({ isActive }) =>
+                      `block rounded-xl px-4 py-3 text-[14px] font-medium transition-colors ${
+                        isActive
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-[#111111]'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-[#E2E8F0] dark:hover:bg-[#202020]'
+                      }`
+                    }
+                  >
+                    Home
+                  </NavLink>
+                  <NavLink
+                    to="/dashboard"
+                    onClick={closeMobileMenu}
+                    className={({ isActive }) =>
+                      `block rounded-xl px-4 py-3 text-[14px] font-medium transition-colors ${
+                        isActive
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-[#111111]'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-[#E2E8F0] dark:hover:bg-[#202020]'
+                      }`
+                    }
+                  >
+                    Dashboard
+                  </NavLink>
+                  <NavLink
+                    to="/guide"
+                    onClick={closeMobileMenu}
+                    className={({ isActive }) =>
+                      `block rounded-xl px-4 py-3 text-[14px] font-medium transition-colors ${
+                        isActive
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-[#111111]'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-[#E2E8F0] dark:hover:bg-[#202020]'
+                      }`
+                    }
+                  >
+                    Guide
+                  </NavLink>
+                  <NavLink
+                    to="/projects"
+                    onClick={closeMobileMenu}
+                    className={({ isActive }) =>
+                      `block rounded-xl px-4 py-3 text-[14px] font-medium transition-colors ${
+                        isActive
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-[#111111]'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-[#E2E8F0] dark:hover:bg-[#202020]'
+                      }`
+                    }
+                  >
+                    Projects
+                  </NavLink>
+                  <NavLink
+                    to="/profile"
+                    onClick={closeMobileMenu}
+                    className={({ isActive }) =>
+                      `block rounded-xl px-4 py-3 text-[14px] font-medium transition-colors ${
+                        isActive
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-[#111111]'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-[#E2E8F0] dark:hover:bg-[#202020]'
+                      }`
+                    }
+                  >
+                    Profile
+                  </NavLink>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link
+                    to="/login"
+                    onClick={closeMobileMenu}
+                    className="block rounded-xl px-4 py-3 text-[14px] font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-[#E2E8F0] dark:hover:bg-[#202020]"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={closeMobileMenu}
+                    className="block rounded-xl bg-gray-900 px-4 py-3 text-center text-[14px] font-medium text-white transition-colors hover:bg-gray-800 dark:bg-[#EDEDED] dark:text-[#111111] dark:hover:bg-white"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {user ? (
+              <div className="border-t border-gray-200 p-3 dark:border-[#2C2C2C]">
+                <button
+                  onClick={() => {
+                    closeMobileMenu();
+                    logoutContext();
+                  }}
+                  className="w-full rounded-xl px-4 py-3 text-left text-[14px] font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </aside>
+      </div>
+
       {/* Main Content Area */}
-      <main className="grow w-full max-w-screen-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="grow w-full max-w-screen-2xl mx-auto px-3 pb-8 pt-5 sm:px-6 sm:pb-10 sm:pt-8 lg:px-8">
         <Outlet />
       </main>
+
+      <footer className="mt-14 border-t border-gray-200 dark:border-[#242A33]">
+        <div className="mx-auto w-full max-w-screen-2xl px-3 py-5 text-center text-[12px] text-gray-400 dark:text-[#7A7A7A] sm:px-6 lg:px-8">
+          <p>© 2026 Bug-Sense. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 };

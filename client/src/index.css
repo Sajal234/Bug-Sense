@@ -17,6 +17,36 @@
   --color-surface-900: #0f172a;
 }
 
+html {
+  font-size: 15px;
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 16px;
+  }
+}
+
 body {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  min-height: 100vh;
+  background-color: #f5f6f8;
+  background-image:
+    radial-gradient(circle at top center, rgba(255, 255, 255, 0.72), transparent 30%),
+    linear-gradient(to bottom, #fafbfc 0%, #f5f6f8 100%);
+}
+
+.dark body {
+  background-color: #0c0d10;
+  background-image:
+    radial-gradient(circle at top center, rgba(255, 255, 255, 0.03), transparent 28%),
+    linear-gradient(to bottom, #121418 0%, #0c0d10 100%);
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.dark ::selection {
+  background: rgba(96, 165, 250, 0.28);
 }

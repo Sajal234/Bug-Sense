@@ -93,6 +93,10 @@ export const validateEnv = () => {
         throw new Error("CORS_ORIGIN must include at least one origin");
     }
 
+    if (allowedOrigins.includes("*")) {
+        throw new Error("CORS_ORIGIN cannot use * when credentials are enabled");
+    }
+
     if (isTrue(process.env.GOOGLE_OAUTH_ENABLED)) {
         const requiredGoogleEnvVars = [
             "FRONTEND_URL",

@@ -117,3 +117,21 @@ test("validateEnv rejects SameSite=None without secure cookies", () => {
         process.env = originalEnv;
     }
 });
+
+test("validateEnv rejects wildcard CORS origins when credentials are enabled", () => {
+    const originalEnv = process.env;
+
+    try {
+        process.env = {
+            ...originalEnv,
+            ...baseEnv,
+            CORS_ORIGIN: "*"
+        };
+        assert.throws(
+            () => validateEnv(),
+            /CORS_ORIGIN cannot use \* when credentials are enabled/
+        );
+    } finally {
+        process.env = originalEnv;
+    }
+});

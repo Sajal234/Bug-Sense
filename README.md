@@ -23,6 +23,10 @@ Latest local verification completed:
 - `client`: `npm run build`
 - `server`: `node --test`
 
+Deployment reference:
+- [DEPLOYMENT.md](/Users/sajal/Study/Projects/Bug-Sense/DEPLOYMENT.md)
+- [render.yaml](/Users/sajal/Study/Projects/Bug-Sense/render.yaml)
+
 ## Core Features
 
 ### Authentication
@@ -157,13 +161,13 @@ npm run test
 ### Local
 
 If you are using:
-- frontend on `http://localhost:5173`
+- frontend on `http://localhost:5174`
 - backend on `http://localhost:3000`
 
 then keep:
 
 ```env
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:5174
 COOKIE_SAME_SITE=lax
 COOKIE_SECURE=false
 ```
@@ -192,7 +196,7 @@ If frontend and backend are deployed on different origins, for example:
 use:
 
 ```env
-COOKIE_SAME_SITE=none
+COOKIE_SAME_SITE=lax
 COOKIE_SECURE=true
 ```
 
@@ -201,6 +205,8 @@ and set:
 ```env
 VITE_API_BASE_URL=https://api.bugsense.com/api/v1
 ```
+
+If you use unrelated provider domains instead of subdomains under the same parent domain, use `COOKIE_SAME_SITE=none`.
 
 ## Deployment Notes
 

@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/axios';
+import useAuth from '../hooks/useAuth';
+import BrandMark from '../components/BrandMark';
+import GoogleAuthButton from '../components/auth/GoogleAuthButton';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -9,7 +12,21 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
   const navigate = useNavigate();
+  const { accessToken, isAuthReady, loginContext, user } = useAuth();
+
+  if (!isAuthReady && user) {
+    return (
+      <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center px-4 text-sm text-gray-500 dark:text-[#A1A1AA]">
+        Restoring your session...
+      </div>
+    );
+  }
+
+  if (isAuthReady && accessToken) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -19,9 +36,11 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault(); // Security constraint: prevent default form submission
+
+    const normalizedEmail = formData.email.trim();
     
     // Client-side validation fallback
-    if (!formData.email || !formData.password) {
+    if (!normalizedEmail || formData.password === '') {
        setError("Both email and password are required.");
        return;
     }
@@ -32,20 +51,24 @@ const Login = () => {
     try {
       // Connects to /api/v1/users/login based on axios logic and backend app.js configuration
       const response = await api.post('/users/login', {
-        email: formData.email.trim(),
+        email: normalizedEmail,
         password: formData.password
       });
 
-      // Strict check against backend's ApiResponse format { statusCode, data, message, success }
+      // Strict check against backend's ApiResponse format
       if (response?.data?.success) {
-        // Navigation lock. Eventually this user data flows into AuthContext
-        // const { user, accessToken } = response.data.data;
+        
+        // Extract payloads
+        const { user, accessToken } = response.data.data;
+        
+        // Securely pass user session to global memory state
+        loginContext(user, accessToken);
         
         // Security constraint: Clear state immediately from RAM 
         setFormData({ email: '', password: '' });
         
         // Push user to secure route
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       // Extract intercepted message from unified axios interceptor or fallback
@@ -60,15 +83,22 @@ const Login = () => {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="w-8 h-8 bg-blue-600 rounded-[6px] flex items-center justify-center shadow-inner mx-auto mb-4">
-            <div className="w-2.5 h-2.5 bg-white rounded-[2px]"></div>
-          </div>
+          <BrandMark className="mx-auto mb-4" />
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white mb-2">
             Welcome back
           </h1>
-          <p className="text-[14px] text-gray-600 dark:text-[#A1A1AA]">
-            Enter your details to sign in to your workspace.
-          </p>
+        </div>
+
+        <div className="mb-6 space-y-4">
+          <GoogleAuthButton disabled={loading} label="Continue with Google" />
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200 dark:border-[#2C2C2C]" />
+            </div>
+            <div className="relative flex justify-center text-[12px] font-medium uppercase tracking-[0.14em] text-gray-400 dark:text-[#6B7280]">
+              <span className="bg-[#FAFAFA] px-3 dark:bg-[#0E0E0E]">Or use email</span>
+            </div>
+          </div>
         </div>
 
         {/* Form Container */}

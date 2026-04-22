@@ -11,13 +11,15 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Ping Render health endpoint
+      - name: Ping Render homepage and health endpoint
         env:
-          KEEP_ALIVE_URL: https://bugsense-ujif.onrender.com/health
+          KEEP_ALIVE_BASE_URL: https://bugsense-ujif.onrender.com
         run: |
-          curl --fail --silent --show-error \
-            --retry 5 \
-            --retry-all-errors \
-            --retry-delay 15 \
-            --max-time 120 \
-            "$KEEP_ALIVE_URL" > /dev/null
+          for endpoint in "/" "/health"; do
+            curl --fail --silent --show-error \
+              --retry 5 \
+              --retry-all-errors \
+              --retry-delay 15 \
+              --max-time 120 \
+              "${KEEP_ALIVE_BASE_URL}${endpoint}" > /dev/null
+          done

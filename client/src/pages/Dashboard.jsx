@@ -97,7 +97,7 @@ const Dashboard = () => {
             Dashboard
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
-            {user?.name ? `Welcome back, ${user.name.split(' ')[0]}` : 'Welcome back'}
+            {user?.name ? `Welcome, ${user.name.split(' ')[0]}` : 'Welcome'}
           </h1>
           <p className="mt-2 text-sm leading-7 text-gray-600 dark:text-[#C9CDD4]">
             Here’s what’s happening across your projects right now.

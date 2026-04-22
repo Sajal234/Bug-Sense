@@ -14,7 +14,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { accessToken, isAuthReady, user } = useAuth();
+  const { accessToken, isAuthReady, loginContext, user } = useAuth();
 
   if (!isAuthReady && user) {
     return (
@@ -54,19 +54,29 @@ const Register = () => {
     setError(null);
 
     try {
-      // Connects to /api/v1/users/register
+      const submittedPassword = formData.password;
+
       const response = await api.post('/users/register', {
         name: normalizedName,
         email: normalizedEmail,
-        password: formData.password
+        password: submittedPassword
       });
 
       if (response?.data?.success) {
-        // Clear state immediately from RAM 
+        const loginResponse = await api.post('/users/login', {
+          email: normalizedEmail,
+          password: submittedPassword
+        });
+
+        if (!loginResponse?.data?.success) {
+          throw new Error('Your account was created, but sign-in could not be completed.');
+        }
+
+        const { user: authenticatedUser, accessToken: nextAccessToken } = loginResponse.data.data;
+
+        loginContext(authenticatedUser, nextAccessToken);
         setFormData({ name: '', email: '', password: '' });
-        
-        // Push user to login route after successful registration
-        navigate('/login', { replace: true });
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       setError(err?.message || "An unexpected error occurred during registration.");

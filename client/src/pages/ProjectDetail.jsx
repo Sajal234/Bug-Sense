@@ -648,19 +648,6 @@ const ProjectDetail = () => {
           </div>
 
           <div className="space-y-3">
-            <div className="lg:hidden">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCreateBugOpen((current) => !current);
-                  setCreateBugError('');
-                }}
-                className={`${primaryButtonClass} w-full justify-center`}
-              >
-                {isCreateBugOpen ? 'Close form' : 'New issue'}
-              </button>
-            </div>
-
             <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.25fr)_180px_180px_180px_auto]">
               <input
                 type="search"
@@ -729,6 +716,19 @@ const ProjectDetail = () => {
                   setCreateBugError('');
                 }}
                 className={`${primaryButtonClass} hidden w-full lg:inline-flex lg:w-auto lg:px-5`}
+              >
+                {isCreateBugOpen ? 'Close form' : 'New issue'}
+              </button>
+            </div>
+
+            <div className="pt-1 lg:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateBugOpen((current) => !current);
+                  setCreateBugError('');
+                }}
+                className={`${primaryButtonClass} w-full justify-center`}
               >
                 {isCreateBugOpen ? 'Close form' : 'New issue'}
               </button>

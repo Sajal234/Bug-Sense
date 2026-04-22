@@ -2,7 +2,7 @@
   "name": "bug-sense",
   "private": true,
   "scripts": {
-    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client",
+    "build": "npm install --prefix server && npm install --include=dev --prefix client && npm run build --prefix client",
     "start": "npm start --prefix server",
     "test": "npm test --prefix server",
     "lint": "npm run lint --prefix client"

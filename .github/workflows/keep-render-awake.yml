@@ -1,0 +1,23 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping Render health endpoint
+        env:
+          KEEP_ALIVE_URL: https://bugsense-ujif.onrender.com/health
+        run: |
+          curl --fail --silent --show-error \
+            --retry 5 \
+            --retry-all-errors \
+            --retry-delay 15 \
+            --max-time 120 \
+            "$KEEP_ALIVE_URL" > /dev/null

@@ -709,16 +709,18 @@ const ProjectDetail = () => {
                   </svg>
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCreateBugOpen((current) => !current);
-                  setCreateBugError('');
-                }}
-                className={`${primaryButtonClass} hidden w-full lg:inline-flex lg:w-auto lg:px-5`}
-              >
-                {isCreateBugOpen ? 'Close form' : 'New issue'}
-              </button>
+              <div className="hidden lg:flex">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateBugOpen((current) => !current);
+                    setCreateBugError('');
+                  }}
+                  className={`${primaryButtonClass} w-full lg:w-auto lg:px-5`}
+                >
+                  {isCreateBugOpen ? 'Close form' : 'New issue'}
+                </button>
+              </div>
             </div>
 
             <div className="pt-1 lg:hidden">

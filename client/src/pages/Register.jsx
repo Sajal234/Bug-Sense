@@ -129,7 +129,6 @@ const Register = () => {
               disabled={loading}
               value={formData.name}
               onChange={handleChange}
-              placeholder="John Doe"
               className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-gray-300 dark:border-[#2C2C2C] rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-[14px] text-gray-900 dark:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
@@ -147,7 +146,6 @@ const Register = () => {
               disabled={loading}
               value={formData.email}
               onChange={handleChange}
-              placeholder="name@company.com"
               className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-gray-300 dark:border-[#2C2C2C] rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-[14px] text-gray-900 dark:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
@@ -167,7 +165,6 @@ const Register = () => {
               disabled={loading}
               value={formData.password}
               onChange={handleChange}
-              placeholder="••••••••"
               className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-gray-300 dark:border-[#2C2C2C] rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-[14px] text-gray-900 dark:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>

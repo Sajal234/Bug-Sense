@@ -332,9 +332,9 @@ const Profile = () => {
       <section className="space-y-5 border-t border-gray-200 pt-6 dark:border-[#242A33]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Devices</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Signed-in devices</h2>
             <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-[#C9CDD4]">
-              See where your account is signed in and remove devices you no longer use.
+              This list shows every browser session still signed in to your account, so you can remove ones you no longer use.
             </p>
           </div>
 

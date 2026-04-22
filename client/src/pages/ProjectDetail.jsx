@@ -647,77 +647,92 @@ const ProjectDetail = () => {
             </p>
           </div>
 
-          <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.25fr)_180px_180px_180px_auto]">
-            <input
-              type="search"
-              value={bugSearch}
-              onChange={(event) => setBugSearch(event.target.value)}
-              placeholder="Search issues"
-              className={issueToolbarFieldClass}
-            />
-            <div className="relative">
-              <select
-                value={quickView}
-                onChange={(event) => setQuickView(event.target.value)}
-                className={issueToolbarSelectClass}
+          <div className="space-y-3">
+            <div className="lg:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateBugOpen((current) => !current);
+                  setCreateBugError('');
+                }}
+                className={`${primaryButtonClass} w-full justify-center`}
               >
-                <option value="all">All issues</option>
-                <option value="mine">Assigned to me</option>
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500 dark:text-[#8A8A8A]">
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+                {isCreateBugOpen ? 'Close form' : 'New issue'}
+              </button>
             </div>
-            <div className="relative">
-              <select
-                value={bugFilters.status}
-                onChange={(event) => setBugFilters((current) => ({ ...current, status: event.target.value }))}
-                className={issueToolbarSelectClass}
+
+            <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.25fr)_180px_180px_180px_auto]">
+              <input
+                type="search"
+                value={bugSearch}
+                onChange={(event) => setBugSearch(event.target.value)}
+                placeholder="Search issues"
+                className={issueToolbarFieldClass}
+              />
+              <div className="relative">
+                <select
+                  value={quickView}
+                  onChange={(event) => setQuickView(event.target.value)}
+                  className={issueToolbarSelectClass}
+                >
+                  <option value="all">All issues</option>
+                  <option value="mine">Assigned to me</option>
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500 dark:text-[#8A8A8A]">
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </div>
+              <div className="relative">
+                <select
+                  value={bugFilters.status}
+                  onChange={(event) => setBugFilters((current) => ({ ...current, status: event.target.value }))}
+                  className={issueToolbarSelectClass}
+                >
+                  <option value="">All statuses</option>
+                  {issueStatusOptions.map((item) => (
+                    <option key={item.status} value={item.status}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500 dark:text-[#8A8A8A]">
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </div>
+              <div className="relative">
+                <select
+                  value={bugFilters.severity}
+                  onChange={(event) => setBugFilters((current) => ({ ...current, severity: event.target.value }))}
+                  className={issueToolbarSelectClass}
+                >
+                  <option value="">All severities</option>
+                  {BUG_SEVERITY_WITH_UNCONFIRMED.map((severity) => (
+                    <option key={severity} value={severity}>
+                      {formatLabel(severity)}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500 dark:text-[#8A8A8A]">
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateBugOpen((current) => !current);
+                  setCreateBugError('');
+                }}
+                className={`${primaryButtonClass} hidden w-full lg:inline-flex lg:w-auto lg:px-5`}
               >
-                <option value="">All statuses</option>
-                {issueStatusOptions.map((item) => (
-                  <option key={item.status} value={item.status}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500 dark:text-[#8A8A8A]">
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+                {isCreateBugOpen ? 'Close form' : 'New issue'}
+              </button>
             </div>
-            <div className="relative">
-              <select
-                value={bugFilters.severity}
-                onChange={(event) => setBugFilters((current) => ({ ...current, severity: event.target.value }))}
-                className={issueToolbarSelectClass}
-              >
-                <option value="">All severities</option>
-                {BUG_SEVERITY_WITH_UNCONFIRMED.map((severity) => (
-                  <option key={severity} value={severity}>
-                    {formatLabel(severity)}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500 dark:text-[#8A8A8A]">
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setIsCreateBugOpen((current) => !current);
-                setCreateBugError('');
-              }}
-              className={`${primaryButtonClass} w-full lg:w-auto lg:px-5`}
-            >
-              {isCreateBugOpen ? 'Close form' : 'New issue'}
-            </button>
           </div>
         </div>
       </div>

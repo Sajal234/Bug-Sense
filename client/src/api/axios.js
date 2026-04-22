@@ -30,6 +30,18 @@ const getReadableErrorMessage = (error) => {
   const responseData = error.response?.data;
   const statusCode = error.response?.status;
 
+  if (statusCode === 401) {
+    return "Your session is no longer valid. Please sign in again.";
+  }
+
+  if (statusCode === 429) {
+    return "Too many attempts. Please wait a bit and try again.";
+  }
+
+  if (statusCode === 502 || statusCode === 503) {
+    return "Server unavailable right now. Please try again in a moment.";
+  }
+
   if (typeof responseData === "string" && responseData.trim()) {
     return responseData;
   }
@@ -40,18 +52,6 @@ const getReadableErrorMessage = (error) => {
 
   if (Array.isArray(responseData?.errors) && responseData.errors.length > 0) {
     return responseData.errors.join(" ");
-  }
-
-  if (statusCode === 429) {
-    return "Too many attempts. Please wait a bit and try again.";
-  }
-
-  if (statusCode === 401) {
-    return "Your session is no longer valid. Please sign in again.";
-  }
-
-  if (statusCode === 502 || statusCode === 503) {
-    return "Server unavailable right now. Please try again in a moment.";
   }
 
   if (error.code === "ERR_NETWORK") {

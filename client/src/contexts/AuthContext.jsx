@@ -10,7 +10,9 @@ const AUTH_REFRESH_EXCLUDE = [
   '/users/register',
   '/users/refresh-token'
 ];
+const REFRESH_RETRY_DELAYS_MS = [1500, 3000, 5000];
 let refreshSessionRequest = null;
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const decodeJwtPayload = (token) => {
   if (typeof token !== 'string' || token.trim() === '') {
@@ -85,6 +87,18 @@ const clearLegacyTokenStorage = () => {
   window.localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
 };
 
+const shouldRetryRefresh = (error) => {
+  const statusCode = error?.response?.status;
+
+  return (
+    error?.code === 'ERR_NETWORK' ||
+    statusCode === 429 ||
+    statusCode === 502 ||
+    statusCode === 503 ||
+    statusCode === 504
+  );
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(readStoredUser);
   const [accessToken, setAccessToken] = useState(null);
@@ -122,7 +136,21 @@ export const AuthProvider = ({ children }) => {
   const refreshSession = useCallback(async () => {
     if (!refreshSessionRequest) {
       refreshSessionRequest = (async () => {
-        const response = await api.post('/users/refresh-token');
+        let response;
+
+        for (let attempt = 0; attempt <= REFRESH_RETRY_DELAYS_MS.length; attempt += 1) {
+          try {
+            response = await api.post('/users/refresh-token');
+            break;
+          } catch (refreshError) {
+            if (attempt === REFRESH_RETRY_DELAYS_MS.length || !shouldRetryRefresh(refreshError)) {
+              throw refreshError;
+            }
+
+            await wait(REFRESH_RETRY_DELAYS_MS[attempt]);
+          }
+        }
+
         const nextAccessToken = response?.data?.data?.accessToken;
 
         if (!nextAccessToken) {

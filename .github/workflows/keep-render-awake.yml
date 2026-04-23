@@ -2,7 +2,7 @@ name: Keep Render Awake
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -11,15 +11,13 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Ping Render homepage and health endpoint
+      - name: Ping Render health endpoint
         env:
           KEEP_ALIVE_BASE_URL: https://bugsense-ujif.onrender.com
         run: |
-          for endpoint in "/" "/health"; do
-            curl --fail --silent --show-error \
-              --retry 5 \
-              --retry-all-errors \
-              --retry-delay 15 \
-              --max-time 120 \
-              "${KEEP_ALIVE_BASE_URL}${endpoint}" > /dev/null
-          done
+          curl --fail --silent --show-error \
+            --retry 5 \
+            --retry-all-errors \
+            --retry-delay 15 \
+            --max-time 120 \
+            "${KEEP_ALIVE_BASE_URL}/health" > /dev/null
